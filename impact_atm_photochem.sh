@@ -89,7 +89,7 @@
 #  the file IW_parameters is written by IW.f for photochem.f
      echo ${fH2O} ${buffer} ${planet} ${Mi} > photochem.input
 
-     gfortran photochem.f -o tomo
+     gfortran photochem_implicit_nickv2.2.f -o tomo
 #  the stuff on the screen goes into a file
      ./tomo > "evolve_Mi=${Mi}_pCO2=${pCO2}_pH2O=${pH2O}_${fluff}_f=${fH2O}.screen"
 
