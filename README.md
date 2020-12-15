@@ -4,17 +4,17 @@ This program is a 0-D photochemical model designed to simulate the Hadean Earth 
 The code was originally developed by Kevin Zahnle and was described in [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c). This repository is an updated version of the code.
 
 # Installation and Use
-The code is written in Fortran, but this repository also contains a Python wrapper to the Fortran code. Following are instructions for using the Fortran or Python versions.
+The code was originally written in fortran. This version of the code is in Python. It is slower but easier to work with.
 
-## Python
-To install python version, download this repository and navigate a terminal to the directory `EvolveAtm`, then install the python package with pip:
+To install this python version download this repository and navigate a terminal to the directory `EvolveAtm`, then install the python package with pip:
 ```bash
 pip install .
 ```
 
-To check that your installation worked propoerly, run the example in `EvolveAtm/Example`.
+To check if your installation works, run the example in the Examples folder
 
-## Fortran
-The file `photochem_implicit_nickv2.2.f`, is the main fortran program. Using this program all by itself requires generating some input files (see the fortran code for details).
-
-The fortran code can also be run using the bash script `impact_atm_photochem.sh`. This script first runs the program `IW.f`. This program models the cooling of a steamy atmosphere after an impact (See section 3 in [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c) for model details). The script then uses output from `IW.f` as input for `photochem_implicit_nickv2.2.f`. Many outputfiles are made.
+# Updates
+The code is not exactly the same as what was used for [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c). There are a few differences:
+- This code has a different hydrogen escape parameterization.
+- This code integrates the ODEs using either the LSODA or CVODE integration methods (high order/accurate). The version published by [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c) used backward Euler (low order method/less accurate).
+- This code self-consistently solves for the UV optical depth at each timestep. The old version of the code used the UV optical depth from the pervious timestep, which sometimes caused the integration to break.
