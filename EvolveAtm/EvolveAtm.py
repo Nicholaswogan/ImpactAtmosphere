@@ -13,10 +13,18 @@ class EvolveAtm:
         self.atmos = atmos
         self.diffusion = diffusion
 
+    def rhs(self,t,y):
+        '''
+        Returns the right-hand-side of the ODEs defining
+        change in the atmosphere
+        '''
+        return self.atmos.rhs(t,y)
+
     def integrate(self,tspan,Ninit_dict,out_dict=True,**kwargs):
         '''
         Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
         model from time tspan[0] to tspan[1] given the initial conditions Ninit_dict.
+        Uses `scipy.integrate.solve_ivp`.
 
         Parameters
         ----------
@@ -86,7 +94,8 @@ class EvolveAtm:
             return out
 
     def diffuse(self,PhiHCN, Ts = 280, Ps = 1, mubar = 28.0, vd_HCN = 5.0e-3, \
-                Kzz = 1.0e5, top_atm = 60.0e5, nz = 60):
+                Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
+                P_trop = 0.1):
         '''
         Calculates the HCN mixing ratio as a function of altitude for a
         given HCN production rate (PhiHCN)
@@ -109,6 +118,10 @@ class EvolveAtm:
             The top of the atmosphere (cm)
         nz: integer, optional
             The number of vertical descritization in the atmosphere.
+        T_trop: float, optional
+            Tropospheric temperature (K)
+        P_trop: float, optional
+            Tropospheric pressure (bar)
 
         Returns
         -------
@@ -117,22 +130,24 @@ class EvolveAtm:
         fHCN: numpy array
             The HCN mixing ratio as a function of altitude in the atmosphere.
         '''
-        dz = top_atm/nz
-        alt = np.linspace(.5*dz,top_atm-.5*dz,nz)
 
-        fHCN = self.diffusion.diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, top_atm, nz)
+        alt, fHCN = self.diffusion.diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, \
+                                           Kzz, top_atm, nz, T_trop, P_trop)
 
         return alt, fHCN
 
-    def rhs(self,t,y):
-        return self.atmos.rhs(t,y)
-
-    def HCN_vdep(self):
+    def HCN_vdep(self,k1,vp_HCN = 0.005, alpha_HCN = 7.5, vo = 2e-5, \
+                 zs = 100e2, zd = 4000e2, T = 298):
         '''
         Calculates deposition velocity of HCN into the ocean assuming
         it is destroyed from hydrolysis.
         '''
-        return None
+        CC = 6.02e20
+        k = 1.3807e-16 #cgs
+
+        vd_HCN = k*T*1e-6*alpha_HCN*CC*k1*vp_HCN*(k1*zd*zs+vo*(zd+zs))\
+                 /(k1*zd*(vp_HCN+k1*zs)+vo*(vp_HCN+k1*(zd+zs)))
+        return vd_HCN
 
     def HCN_hydrolysis_rate(self):
         '''

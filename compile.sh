@@ -12,8 +12,11 @@ gfortran -c src/minpack/qrsolv.f $FCFLAGS
 
 gfortran -c src/diffusion.f90 $FCFLAGS
 gfortran -c src/EvolveAtmFort.f90 $FCFLAGS
+gfortran -c src/test.f90 $FCFLAGS
 
-gfortran EvolveAtmFort.o diffusion.o dpmpar.o enorm.o fdjac2.o lmdif.o lmdif1.o lmdif2.o lmpar.o qrfac.o qrsolv.o -o test.run $FCFLAGS -llapack
+gfortran test.o EvolveAtmFort.o diffusion.o dpmpar.o \
+         enorm.o fdjac2.o lmdif.o lmdif1.o lmdif2.o \
+         lmpar.o qrfac.o qrsolv.o -o test.run $FCFLAGS -llapack
 
 python -m numpy.f2py -c src/diffusion.f90 src/EvolveAtmFort.f90 src/minpack/dpmpar.f src/minpack/enorm.f \
                         src/minpack/fdjac2.f src/minpack/lmdif.f src/minpack/lmdif1.f \

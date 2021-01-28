@@ -17,7 +17,8 @@ module diffusion
 
 
 contains
-  subroutine diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, tope, nz,fHCN)
+  subroutine diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, tope, nz, &
+                     T_trop1, P_trop1, zm, fHCN)
     implicit none
 
     ! input
@@ -29,10 +30,13 @@ contains
     double precision, intent(in) :: Kzz ! diffusion (cm2/s)
     double precision, intent(in) :: tope ! top of atmosphere (cm)
     integer, intent(in) :: nz ! number of vertical layers
+    double precision, intent(in) :: T_trop1 ! top of atmosphere (cm)
+    double precision, intent(in) :: P_trop1 ! top of atmosphere (cm)
     ! double precision, intent(in) :: HCN_alt ! altitude HCN is injected into atmosphere (cm)
 
     ! output
     double precision, dimension(nz),intent(out) :: fHCN
+    double precision, dimension(nz), intent(out) :: zm
 
     ! other
     integer i
@@ -42,7 +46,6 @@ contains
     double precision, dimension(nz+1) :: Te
     double precision, dimension(nz+1) :: ne
 
-    double precision, dimension(nz) :: zm
     double precision, dimension(nz) :: Pm
     double precision, dimension(nz) :: Tm
     double precision, dimension(nz) :: nm
@@ -61,6 +64,8 @@ contains
     TT_surf = Ts
     ppressure = Ps
     mmubar = mubar
+    T_trop = T_trop1
+    P_trop = P_trop1
 
     ztrop = -k_boltz/(mubar/N_avo*g)* &
               (T_trop-TT_surf)*(1.d0/dlog(T_trop/TT_surf)) &
