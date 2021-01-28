@@ -60,9 +60,10 @@ class EvolveAtm:
             T_surf = np.zeros(len(tvals))
             tau_uv = np.zeros(len(tvals))
             N_H2O = np.zeros(len(tvals))
+            mubar = np.zeros(len(tvals))
             self.atmos.tau_uv_init = 100.
             for i in range(0,len(tvals)):
-                dNdt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i] = \
+                dNdt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i],mubar[i] = \
                 self.atmos.rhs_verbose(tvals[i],N_vals[i])
 
             # build a dictionary of output
@@ -72,6 +73,7 @@ class EvolveAtm:
             out['press'] = pressure
             out['Tsurf'] = T_surf
             out['tau_uv'] = tau_uv
+            out['mubar'] = mubar
             out['time'] = tvals
             out['dNHCN_dt'] = dNdt[:,self.species.index('HCN')]
             out['dNHaze_dt'] = dNdt[:,self.species.index('Haze')]
@@ -93,30 +95,42 @@ class EvolveAtm:
         ----------
         PhiHCN: float
             The HCN production rate (molecules/cm^2/s)
-        Ts: float
+        Ts: float, optional
             The surface temperature (K)
-        Ps: float
+        Ps: float, optional
             The surface pressure (bar)
-        mubar: float
+        mubar: float, optional
             The mean molar weight of the atmosphere (g/mol)
-        vd_HCN: float
+        vd_HCN: float, optional
             The deposition velocity of HCN into the ground (cm/s)
-        Kzz: float
+        Kzz: float, optional
             The eddy diffusion coefficient (cm^2/s)
-        top_atm: float
+        top_atm: float, optional
             The top of the atmosphere (cm)
-        nz: integer
+        nz: integer, optional
             The number of vertical descritization in the atmosphere.
-        '''
 
-        return self.diffusion.diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, top_atm, nz)
+        Returns
+        -------
+        alt: numpy array
+            The altitude of each HCN mixing ratio (cm).
+        fHCN: numpy array
+            The HCN mixing ratio as a function of altitude in the atmosphere.
+        '''
+        dz = top_atm/nz
+        alt = np.linspace(.5*dz,top_atm-.5*dz,nz)
+
+        fHCN = self.diffusion.diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, top_atm, nz)
+
+        return alt, fHCN
 
     def rhs(self,t,y):
         return self.atmos.rhs(t,y)
 
     def HCN_vdep(self):
         '''
-        Calculates deposition velocity of HCN.
+        Calculates deposition velocity of HCN into the ocean assuming
+        it is destroyed from hydrolysis.
         '''
         return None
 

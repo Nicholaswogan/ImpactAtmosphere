@@ -13,7 +13,7 @@ module atmos
   integer, parameter :: LHCN = 8
   integer, parameter :: LC2Hn = 9
   integer, parameter :: LHaze = 10
-  double precision, dimension(10) :: mass = (/ 0.016d3,0.002d3,0.028d3,0.044d3,0.016d3, &
+  double precision, dimension(10) :: mass = (/ 0.018d3,0.002d3,0.028d3,0.044d3,0.016d3, &
                                      & 0.028d3,0.017d3,0.027d3,0.026d3,0.099d3 /)
   double precision :: n_avo = 6.022d23
   integer, parameter :: nsun = 7
@@ -47,7 +47,7 @@ contains
 
   include "setup.f90"
 
-  subroutine rhs_all(y,tau_uv,dNdt,pressure,T_surf,N_H2O)
+  subroutine rhs_all(y,tau_uv,dNdt,pressure,T_surf,N_H2O,mu)
     implicit none
 
     ! input
@@ -60,6 +60,7 @@ contains
     double precision, intent(out) :: pressure
     double precision, intent(out) :: T_surf
     double precision, intent(out) :: N_H2O
+    double precision, intent(out) :: mu
 
 
     ! other
@@ -76,9 +77,9 @@ contains
     integer, parameter :: lwa = 54
     integer, dimension(lwa) :: wa
     ! other
-    double precision :: p_H2O, p_dry, mu, p_H2O_trop
+    double precision :: p_H2O, mubar, p_dry, p_H2O_trop
     double precision :: fraction, NX, N_H2O_strat, N_strat, NH2Ox
-    double precision :: N_bar, mubar, N_t, BBB, fH2, H2_esc
+    double precision :: N_bar, N_t, BBB, fH2, H2_esc
     double precision, dimension(Nsun) :: tau
     double precision, dimension(Nsp) :: Phi_ion, Phi
     double precision :: sum_ions, CH4_ion_breakup, sumO1D, sumOH
@@ -344,9 +345,9 @@ contains
     ! other
     double precision :: pressure
     double precision :: T_surf
-    double precision :: N_H2O
+    double precision :: N_H2O, mu
 
-    call rhs_all(y,tau_uv,dNdt,pressure,T_surf,N_H2O)
+    call rhs_all(y,tau_uv,dNdt,pressure,T_surf,N_H2O, mu)
 
   end subroutine
 
@@ -391,7 +392,7 @@ contains
 
   end subroutine
 
-  subroutine rhs_verbose(t,y,dNdt,pressure, T_surf, tau_uv, N_H2O)
+  subroutine rhs_verbose(t,y,dNdt,pressure, T_surf, tau_uv, N_H2O, mu)
     implicit none
 
     ! input
@@ -401,7 +402,7 @@ contains
 
     ! output
     double precision, dimension(10), intent(out) :: dNdt
-    double precision, intent(out) :: pressure, T_surf, N_H2O, tau_uv
+    double precision, intent(out) :: pressure, T_surf, N_H2O, tau_uv, mu
 
     ! other
     integer i
@@ -429,7 +430,7 @@ contains
     tau_uv_init = dexp(x(1))
     tau_uv = dexp(x(1))
 
-    call rhs_all(N,dexp(x(1)),dNdt,pressure,T_surf,N_H2O)
+    call rhs_all(N,dexp(x(1)),dNdt,pressure,T_surf,N_H2O,mu)
 
   end subroutine
 
@@ -515,7 +516,6 @@ program test
 
   call diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, tope, nz,fHCN)
 
-  print*,fHCN
 
 
 
