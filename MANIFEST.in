@@ -1,3 +1,0 @@
-include EvolveAtm/Flux0.txt
-include EvolveAtm/react_rates.txt
-include EvolveAtm/sigma.txt
