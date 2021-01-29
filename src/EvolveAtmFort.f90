@@ -287,8 +287,8 @@ contains
               / (Phi(LCH4)-dCH4dt_ox + Phi(LH2O) +Phi(LCO2) )
 
     ! CH4
-    dNdt(LCH4) = -Phi(LCH4) + dCH4dt_ox + Phi_geo(LCH4) !&
-                   ! - Phi(LNH3)*NH3_HCN
+    dNdt(LCH4) = -Phi(LCH4) + dCH4dt_ox + Phi_geo(LCH4) &
+                    - Phi(LNH3)*NH3_HCN
 
 
     ! HCN
@@ -315,7 +315,7 @@ contains
     dNdt(LCO)  = Phi(LCO2)-(dCH4dt_ox-Phi(LCH4)) &
                    - dNdt(LHaze) - Phi(LCO2)*O1D_OH*OH_CO &
                    - Phi(LH2O)*OH_CO - Phi(LCO2)*(1.d0-O1D_OH)*O_CO &
-                   - dNdt(LHCN) !+ Phi(LNH3)*NH3_HCN
+                   - dNdt(LHCN) + Phi(LNH3)*NH3_HCN
     ! H2
     dNdt(LH2) = H2_esc - 2.d0*(dCH4dt_ox-Phi(LCH4)) &
                   + 2.d0*dNdt(LCO2) + dNdt(LCO) - dNdt(LHaze) - dNdt(LHCN) &
