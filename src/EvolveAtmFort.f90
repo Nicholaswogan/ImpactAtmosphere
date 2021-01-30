@@ -332,25 +332,6 @@ contains
 
   end subroutine
 
-  subroutine rhs_eq(y,tau_uv,dNdt)
-    implicit none
-
-    ! input
-    double precision, dimension(10), intent(in) :: y
-    double precision, intent(in) :: tau_uv
-
-    ! output
-    double precision, dimension(10), intent(out) :: dNdt
-
-    ! other
-    double precision :: pressure
-    double precision :: T_surf
-    double precision :: N_H2O, mu
-
-    call rhs_all(y,tau_uv,dNdt,pressure,T_surf,N_H2O, mu)
-
-  end subroutine
-
   subroutine rhs(t,y,dNdt)
     implicit none
 
@@ -364,6 +345,7 @@ contains
 
     ! other
     integer i
+    double precision pressure,T_surf,N_H2O,mu
     ! for nonlinear solve
     double precision, dimension(1) :: x, fvec
     double precision :: tol = 1.49012d-8
@@ -388,7 +370,7 @@ contains
     tau_uv_init = dexp(x(1))
 
 
-    call rhs_eq(N,dexp(x(1)),dNdt)
+    call rhs_all(N,dexp(x(1)),dNdt,pressure,T_surf,N_H2O,mu)
 
   end subroutine
 
@@ -459,10 +441,12 @@ contains
     double precision :: tau_uv
     double precision, dimension(10) :: dNdt
 
+    double precision pressure,T_surf,N_H2O,mu
+
     ! x is log tau_uv
     tau_uv = dexp(x(1))
 
-    call rhs_eq(NNN,tau_uv,dNdt)
+    call rhs_all(NNN,tau_uv,dNdt,pressure,T_surf,N_H2O,mu)
 
     fvec(1) = tau_uv-10.d0*((dNdt(LHaze)+dNdt(LHCN))/Wolf_Toon)**0.8d0
 

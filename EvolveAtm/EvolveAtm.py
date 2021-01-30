@@ -6,7 +6,7 @@ atmos.setup()
 from EvolveAtmFort import diffusion
 
 
-def integrate(tspan,Ninit_dict,out_dict=True,**kwargs):
+def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
     '''
     Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
     model from time tspan[0] to tspan[1] given the initial conditions Ninit_dict.
@@ -43,7 +43,7 @@ def integrate(tspan,Ninit_dict,out_dict=True,**kwargs):
 
     # set uv to 100. then integrate
     atmos.tau_uv_init = 100.
-    sol = solve_ivp(atmos.rhs,tspan,Ninit,**kwargs)
+    sol = solve_ivp(atmos.rhs,tspan,Ninit,method = method,**kwargs)
 
     # only take positive solution (it should be almost positive)
     N_vals = np.clip(sol.y.T,0,np.inf)
