@@ -94,7 +94,8 @@ def diffuse(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
             P_trop = 0.1, **kwargs):
     '''
     Calculates the HCN mixing ratio as a function of altitude for a
-    given HCN production rate (PhiHCN)
+    given HCN production rate (PhiHCN). Assumes HCN hydrolyses in an
+    ocean at the lower boundary.
 
     Parameters
     ----------
@@ -205,3 +206,32 @@ def HCN_hydrolysis_rate(T, pH):
     ktot=k1H*H+(k1OH*Kw/(H+Ka_HCN))  #in s^-1
 
     return ktot # in s^-1
+
+def HCONH2_hydrolysis_rate(T,pH):
+    '''
+    Calculates HCONH2 hydrolysis rate following Miyakawa et al. 2001.
+
+    Parameters
+    ----------
+    T: float
+        Temperature of the water (K)
+    pH; float
+        The pH of the water (unit-less)
+
+    Returns
+    -------
+    ktot: float
+        The HCONH2 hydrolysis rate (1/s)
+    '''
+    H=10.**(-1.*pH)
+    OH=1.0e-14/H
+
+    logkformH=-4060./T+9.85
+    logkformOH=-3440./T+8.92
+
+    kformH=10.**(logkformH)
+    kformOH=10.**(logkformOH)
+
+    kform=kformH*H+kformOH*OH
+
+    return kform
