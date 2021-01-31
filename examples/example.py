@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from EvolveAtm import EvolveAtm as ev
+import EvolveAtm as ev
 
 # initial conditions (molecules/cm2)
 Ninit_dict = {'H2':1.5e+26,

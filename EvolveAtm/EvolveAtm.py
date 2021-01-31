@@ -23,6 +23,8 @@ def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
         If true, then the output will be a dictionary. If false, then the output
         will be a numpy array containing the abundance of each molecule at each
         timestep in molecules/cm^2.
+    method: str, optional
+        Method used by the scipy integrator.
     **kwargs:
         The same optional arguments as scipy.integrate.solve_ivp,
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
