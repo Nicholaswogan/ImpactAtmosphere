@@ -7,8 +7,7 @@ from EvolveAtmFort import diffusion
 
 
 def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
-    '''
-    Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
+    '''Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
     model from time tspan[0] to tspan[1] given the initial conditions Ninit_dict.
     Uses `scipy.integrate.solve_ivp`.
 
@@ -92,8 +91,7 @@ def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
 def diffuse(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
             Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
             P_trop = 0.1, **kwargs):
-    '''
-    Calculates the HCN mixing ratio as a function of altitude for a
+    '''Calculates the HCN mixing ratio as a function of altitude for a
     given HCN production rate (PhiHCN). Assumes HCN hydrolyses in an
     ocean at the lower boundary.
 
@@ -136,8 +134,7 @@ def diffuse(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
     return alt, fHCN
 
 def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
-    '''
-    Calculates deposition velocity (cm/s) of HCN into the ocean assuming
+    '''Calculates deposition velocity (cm/s) of HCN into the ocean assuming
     it is destroyed from hydrolysis.
 
     Parameters
@@ -173,8 +170,7 @@ def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
     return vd_HCN
 
 def HCN_hydrolysis_rate(T, pH):
-    '''
-    Calculates HCN hydrolysis rate following Miyakawa et al. 2001.
+    '''Calculates HCN hydrolysis rate following Miyakawa et al. 2001.
 
     Parameters
     ----------
@@ -208,8 +204,7 @@ def HCN_hydrolysis_rate(T, pH):
     return ktot # in s^-1
 
 def HCONH2_hydrolysis_rate(T,pH):
-    '''
-    Calculates HCONH2 hydrolysis rate following Miyakawa et al. 2001.
+    '''Calculates HCONH2 hydrolysis rate following Miyakawa et al. 2001.
 
     Parameters
     ----------

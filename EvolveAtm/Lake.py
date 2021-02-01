@@ -1,17 +1,54 @@
-from EvolveAtm import *
+from EvolveAtm.Atmosphere import *
 # this is an extension of EvolveAtm
 
 
 class LakeAfterImpact:
+    """This class contains a 0-D photochemical model coupled to a surface lake.
+    """
+
 
     def __init__(self):
         self.species = ['H2O','H2','CO','CO2','CH4','N2','NH3', \
                         'HCN', 'C2Hn', 'Haze','HCONH2','HCOOH']
+        self.Navo = 6.022e23
 
     def parameters(self,T_surf,pH_ocean,T_lake,pH_lake,Kzz = 1.e5,\
                    HCNalt = 60.0e5, nz = 60, T_trop = 180., \
                    P_trop = 0.1, vo = 1.2e-5, zs = 100.e2, zd = 4000.e2, \
                    fH2O_trop = 1.0e-6):
+        """Set parameters used for the simulation.
+
+        Parameters
+        ----------
+        T_surf : float
+            Surface temperature of the atmosphere and temperature
+            of the ocean (K).
+        pH_ocean : float
+            pH of the ocean (no units).
+        T_lake : float
+            Temperature of the small lake on land (K).
+        pH_lake : float
+            pH of the small lake (unit-less)
+        Kzz : float, optional
+            Eddy diffusion coefficient (cm2/s)
+        HCNalt: float, optional
+            Altitude HCN is produced in the atmosphere (cm)
+        nz : integer, optional
+            number of vertical layers in the atmosphere for HCN diffusion
+            calculation
+        T_trop : float, optional
+            Tropopause temperature (K)
+        P_trop: float, optional
+            Tropopause pressure (K)
+        vo : float, optional
+            Turnover velocity of the ocean (cm/s)
+        zs : float, optional
+            Depth of the surface ocean (cm)
+        zd : float, optional
+            Depth of the deep ocean (cm)
+        fH2O_trop: type
+            H2O mixing ratio at the tropopause
+        """
 
         # atmosphere parameters
         self.T_surf = T_surf # Surface T (K)
@@ -47,7 +84,7 @@ class LakeAfterImpact:
 
     def rhs_verbose(self,t,y):
         N = y[:-2]
-        HCONH2, HCOOH = y[-2:]
+        HCONH2, HCOOH = y[-2:]/self.Navo
 
         # the right-hand-side of the atmosphere
         dNdt, pressure, T_surf, tau_uv, N_H2O, mubar = atmos.rhs_verbose(t,N)
@@ -72,8 +109,8 @@ class LakeAfterImpact:
         sumHCN = HCN_aq + CN
 
         # hydrolysis of HCN and HCONH2 in the lake
-        dHCONH2_dt = self.ktot_lake*sumHCN - self.kform_lake*HCONH2
-        dHCOOH_dt = self.kform_lake*HCONH2
+        dHCONH2_dt = (self.ktot_lake*sumHCN - self.kform_lake*HCONH2)*self.Navo
+        dHCOOH_dt = (self.kform_lake*HCONH2)*self.Navo
 
         # right-hand-side of ODEs
         RHS = np.append(dNdt,np.array([dHCONH2_dt,dHCOOH_dt]))
@@ -84,14 +121,42 @@ class LakeAfterImpact:
         RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN = self.rhs_verbose(t,y)
         return RHS
 
-    def integrate(self,tspan,init_dict,out_dict=True,method = "LSODA",**kwargs):
+    def integrate(self,tspan,init_dict,out_dict=True,method = "LSODA",rtol=1e-6,**kwargs):
+        '''Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
+        model coupled to a surface lake from time tspan[0] to tspan[1]
+        given the initial conditions Ninit_dict.
+
+        Parameters
+        ----------
+        tspan : list
+            Will integrate from time tspan[0] to tspan[1] in seconds.
+        Ninit_dict : dict
+            Dictionary containing initial conditions. Must contain
+            the following 11 dictionary items: H2, CO, CO2, CH4, N2, NH3, HCN, C2Hn,
+            Haze, HCONH2, HCOOH. The species HCONH2, HCOOH are mol/kg, in the lake.
+            The rest of the species are in molecules/cm2 in the atmosphere.
+        out_dict: bool
+            If true, then the output will be a dictionary. If false, then the output
+            will be a numpy array with the solution.
+        method: str, optional
+            Method used by the scipy integrator.
+        **kwargs:
+            The same optional arguments as scipy.integrate.solve_ivp,
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
+
+        Returns
+        -------
+        out: dict
+            Dictionary defining the state of the atmosphere and lake as a function of time.
+        '''
         init = np.zeros(len(self.species))
         init[0] = 1. # H2O doesn't matter
-        init[1:] = np.array([init_dict[key] for key in self.species[1:]])
-
+        init[1:-2] = np.array([init_dict[key] for key in self.species[1:-2]])
+        init[-2] = init_dict['HCONH2']*self.Navo
+        init[-1] = init_dict['HCOOH']*self.Navo
         # set tau uv to 100. then integrate
         atmos.tau_uv_init = 100.
-        sol = solve_ivp(self.rhs,tspan,init,method = method,**kwargs)
+        sol = solve_ivp(self.rhs,tspan,init,method = method,rtol=rtol,**kwargs)
 
         # check if solver succeeded
         if not sol.success:
@@ -138,8 +203,8 @@ class LakeAfterImpact:
             out['HCN_aq_lake'] = HCN_aq
             out['CN_lake'] = CN
             out['sumHCN_lake'] = sumHCN
-            out['HCONH2_lake'] = yvals[:,-2]
-            out['HCOOH_lake'] = yvals[:,-1]
+            out['HCONH2_lake'] = yvals[:,-2]/self.Navo
+            out['HCOOH_lake'] = yvals[:,-1]/self.Navo
             for i in range(1,len(self.species)-2):
                     out[self.species[i]] = yvals[:,i]/out['Ntot']
 
