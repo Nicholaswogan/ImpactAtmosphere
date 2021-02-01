@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import EvolveAtm as ev
+from EvolveAtm import Atmosphere as atm
 
 # initial conditions (molecules/cm2)
 Ninit_dict = {'H2':1.5e+26,
@@ -16,7 +16,7 @@ Ninit_dict = {'H2':1.5e+26,
 # integrate for 10 million years
 tspan = [0,10e6*(60*60*24*365)]
 
-out = ev.integrate(tspan,Ninit_dict,method='LSODA') # use LSODA
+out = atm.integrate(tspan,Ninit_dict) 
 
 # plot results
 plt.rcParams.update({'font.size': 20})
