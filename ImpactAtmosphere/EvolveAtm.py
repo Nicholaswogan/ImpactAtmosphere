@@ -1,12 +1,14 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 import sys
+
 from EvolveAtmFort import atmos
 atmos.setup()
 from EvolveAtmFort import diffusion
+from .hydrolysis_rates import HCN_hydrolysis_rate
 
 
-def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
+def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs):
     '''Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
     model from time tspan[0] to tspan[1] given the initial conditions Ninit_dict.
     Uses `scipy.integrate.solve_ivp`.
@@ -17,7 +19,7 @@ def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
         Will integrate from time tspan[0] to tspan[1] in seconds.
     Ninit_dict : dict
         Dictionary containing initial atmosphere in molecules/cm^2. Must contain
-        the following 9 dictionary items: H2, CO, CO2, CH4, N2, NH3, HCN, C2Hn, Haze
+        the following 9 dictionary items: H2, CO, CO2, CH4, N2, NH3
     out_dict: bool
         If true, then the output will be a dictionary. If false, then the output
         will be a numpy array containing the abundance of each molecule at each
@@ -36,15 +38,19 @@ def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
 
     # species
     species = ['H2O','H2','CO','CO2','CH4','N2','NH3', 'HCN', 'C2Hn', 'Haze']
-
+    Navo = 6.02214129e23
     # dict to array
     Ninit = np.zeros(len(species))
-    Ninit[0] = 1. # H2O doesn't matter
-    Ninit[1:] = np.array([Ninit_dict[key] for key in species[1:]])
+    Ninit[1:-3] = np.array([Ninit_dict[key]*Navo for key in species[1:-3]])
+
+    # stop integration when H2 escapes
+    def event(t,y):
+        return y[1]-H2end*Navo
+    event.terminal = True
 
     # set uv to 100. then integrate
     atmos.tau_uv_init = 100.
-    sol = solve_ivp(atmos.rhs,tspan,Ninit,method = method,**kwargs)
+    sol = solve_ivp(atmos.rhs,tspan,Ninit,method = method,events=event,**kwargs)
 
     # only take positive solution (it should be almost positive)
     N_vals = np.clip(sol.y.T,0,np.inf)
@@ -52,43 +58,43 @@ def integrate(tspan,Ninit_dict,out_dict=True,method = "LSODA",**kwargs):
 
     # check if solver succeeded
     if not sol.success:
-        sys.exit('ODE integration failed')
+        sys.exit(sol.message)
 
-    if not out_dict:
-        return N_vals
-    elif out_dict:
-        # re-run the RHS of the ODEs but this time save interesting stuff
-        dNdt = np.zeros(N_vals.shape)
-        pressure = np.zeros(len(tvals))
-        T_surf = np.zeros(len(tvals))
-        tau_uv = np.zeros(len(tvals))
-        N_H2O = np.zeros(len(tvals))
-        mubar = np.zeros(len(tvals))
-        atmos.tau_uv_init = 100.
-        for i in range(0,len(tvals)):
-            dNdt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i],mubar[i] = \
-            atmos.rhs_verbose(tvals[i],N_vals[i])
+    # re-run the RHS of the ODEs but this time save interesting stuff
+    dNdt = np.zeros(N_vals.shape)
+    pressure = np.zeros(len(tvals))
+    T_surf = np.zeros(len(tvals))
+    tau_uv = np.zeros(len(tvals))
+    N_H2O = np.zeros(len(tvals))
+    mubar = np.zeros(len(tvals))
+    atmos.tau_uv_init = 100.
+    for i in range(0,len(tvals)):
+        dNdt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i],mubar[i] = \
+        atmos.rhs_verbose(tvals[i],N_vals[i])
 
-        # build a dictionary of output
-        out = {}
-        out['Ntot'] = np.sum(N_vals[:,:-3],axis=1)-\
-                      N_vals[:,species.index('H2O')] + N_H2O
-        out['press'] = pressure
-        out['Tsurf'] = T_surf
-        out['tau_uv'] = tau_uv
-        out['mubar'] = mubar
-        out['time'] = tvals
-        out['dNHCN_dt'] = dNdt[:,species.index('HCN')]
-        out['dNHaze_dt'] = dNdt[:,species.index('Haze')]
-        out['H2O'] = N_H2O/out['Ntot']
-        out['NH2O_strat'] = N_vals[:,species.index('H2O')]
-        for i in range(len(species)):
-            if species[i] != 'H2O':
-                out[species[i]] = N_vals[:,i]/out['Ntot']
+    # build a dictionary of output
+    N_vals_mol = N_vals/Navo
+    out = {}
+    out['Ntot'] = np.sum(N_vals_mol[:,:-3],axis=1)-\
+                  N_vals_mol[:,species.index('H2O')] + N_H2O/Navo
+    out['Psurf'] = pressure
+    out['Tsurf'] = T_surf
+    out['tau_uv'] = tau_uv
+    out['mubar'] = mubar
+    out['time'] = tvals
+    out['dNHCN_dt'] = dNdt[:,species.index('HCN')]
+    out['dNHaze_dt'] = dNdt[:,species.index('Haze')]
+    out['NH2O_strat'] = N_vals_mol[:,species.index('H2O')]
+    out['H2O'] = N_H2O/Navo/out['Ntot']
+    for i in range(1,len(species)-3):
+        out[species[i]] = N_vals_mol[:,i]/out['Ntot']
+    out['sumHCN'] = N_vals_mol[:,-3]
+    out['sumC2Hn'] = N_vals_mol[:,-2]
+    out['sumHaze'] = N_vals_mol[:,-1]
 
-        return out
+    return out
 
-def diffuse(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
+def diffuseHCN(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
             Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
             P_trop = 0.1, **kwargs):
     '''Calculates the HCN mixing ratio as a function of altitude for a
@@ -156,7 +162,7 @@ def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
         Deposition velocity of HCN into the ocean (cm/s)
     '''
     vp_HCN = 0.005 # piston velocity of HCN (cm/s). WARNING! need to confirm this is reasonable
-    CC = 6.022e20 # avagadros number/1e3 (molecules/mol)
+    CC = 6.022e20 # avagadros number/1e3
     k = 1.3807e-16 # boltzman (cgs units)
 
     # HCN henry's law constant
@@ -168,65 +174,3 @@ def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
     vd_HCN = k*T*1e-6*alpha_HCN*CC*ktot*vp_HCN*(ktot*zd*zs+vo*(zd+zs))\
                     /(ktot*zd*(vp_HCN+ktot*zs)+vo*(vp_HCN+ktot*(zd+zs)))
     return vd_HCN
-
-def HCN_hydrolysis_rate(T, pH):
-    '''Calculates HCN hydrolysis rate following Miyakawa et al. 2001.
-
-    Parameters
-    ----------
-    T: float
-        Temperature of the water (K)
-    pH; float
-        The pH of the water (unit-less)
-
-    Returns
-    -------
-    ktot: float
-        The HCN hydrolysis rate (1/s)
-    '''
-    H=10.**(-1.*pH)
-    OH=1.0e-14/H
-
-    # acid catalyzed: (in M^-1 s^-1)
-    logk1H=-4950./T + 8.43
-    k1H=10.**(logk1H)
-    # base catalyzed: (in M^-1 s^-1)
-    logk1OH=-4240./T + 11.1
-    k1OH=10.**(logk1OH)
-
-    pKw=-6.0846+4471.33/T+.017053*T  #from Stribling and Miller 1987, from Miyakawa's original sources (Robinson and Stokes 1959 and Schlesinger and Miller 1973, resp.)
-    pKa_HCN=-8.85+3802./T+.01786*T
-    Kw=10.**(-1.*pKw)
-    Ka_HCN=10.**(-1.*pKa_HCN)
-
-    ktot=k1H*H+(k1OH*Kw/(H+Ka_HCN))  #in s^-1
-
-    return ktot # in s^-1
-
-def HCONH2_hydrolysis_rate(T,pH):
-    '''Calculates HCONH2 hydrolysis rate following Miyakawa et al. 2001.
-
-    Parameters
-    ----------
-    T: float
-        Temperature of the water (K)
-    pH; float
-        The pH of the water (unit-less)
-
-    Returns
-    -------
-    ktot: float
-        The HCONH2 hydrolysis rate (1/s)
-    '''
-    H=10.**(-1.*pH)
-    OH=1.0e-14/H
-
-    logkformH=-4060./T+9.85
-    logkformOH=-3440./T+8.92
-
-    kformH=10.**(logkformH)
-    kformOH=10.**(logkformOH)
-
-    kform=kformH*H+kformOH*OH
-
-    return kform

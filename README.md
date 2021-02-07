@@ -1,14 +1,22 @@
-# EvolveAtm
-This program is a 0-D photochemical model designed to simulate the Hadean Earth atmosphere after an asteroid impact.
+# ImpactAtmosphere
+This package contains models of atmospheric evolution after large asteroid impacts on the Hadean Earth.
 
-The code was originally developed by Kevin Zahnle and was described in [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c). This repository is an updated version of the code.
+A lot of this code was originally developed by Kevin Zahnle and is described in [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c). This repository builds upon that paper.
 
-# Installation and Use
-To install this python version download this repository and navigate a terminal to the directory `EvolveAtm`, then install the python package with pip:
+# Installation
+**Requirements**:<br>
+To install ImpactAtmosphere, you must have the following installed on your system
+- `Python` (>3.6.0) with the `numpy` and `cantera` packages. Install `cantera` using conda: `conda install --channel cantera cantera`, or follow [this guide](https://cantera.org/install/index.html).
+- The GNU compiler collection, version >4.9.4 (includes `gfortran`, `gcc`, etc.). If you are using a Mac, I suggest installing it with Homebrew: `brew install gcc`. For other operating systems [follow this GNU installation guide](https://gcc.gnu.org/install/binaries.html).
+- The `lapack` library. You probably don't have to worry about this because most operating systems have `lapack` installed by default. For example, any MacOS should have `lapack` installed in `/urs/lib/`.
 
-```bash
-python -m pip install .
-```
+
+ **Install**:<br>
+After satisfying the requirements, you can install `ImpactAtmosphere` with the pip from this github repository:
+
+`python -m pip install git+git://github.com/Nicholaswogan/ImpactAtmosphere.git`
+
+<!-- # Documentation -->
 
 # Updates
 The code is not exactly the same as what was used for [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c). There are a few differences:

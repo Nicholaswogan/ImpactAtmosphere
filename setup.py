@@ -11,8 +11,8 @@ extensions = [Extension(name="EvolveAtmFort",
                         libraries=['lapack'],
                         f2py_options=only.split()),]
 
-setup(name = 'EvolveAtm',
+setup(name = 'ImpactAtmosphere',
       python_requires='>3.6.0',
-      packages=['EvolveAtm'],
-      version='4.0',
+      packages=['ImpactAtmosphere'],
+      version='4.0.1',
       ext_modules=extensions)
