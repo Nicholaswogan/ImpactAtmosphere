@@ -1,6 +1,7 @@
 import numpy as np
 import cantera as ct
 import sys
+import os
 
 from .EvolveAtm import integrate
 
@@ -8,7 +9,13 @@ class SteamAtm():
 
     def __init__(self,gas,T_prime = 2000, impactor_energy_frac = 0.5, \
         Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 17e5 ):
-        self.gas = gas # cantera gas object
+
+        if type(gas) == str:
+            zahnle_path = os.path.dirname(os.path.realpath(__file__))+'/data/'
+            ct.add_directory(zahnle_path)
+            self.gas = ct.Solution(gas)
+        else:
+            self.gas = gas # cantera gas object
         self.gas.basis = 'mass'
 
         # Parameters
@@ -282,3 +289,12 @@ class SteamAtm():
         else:
             sys.exit('More Fe than O!')
         return N_H2, N_H2O, N_CO, N_CO2
+
+    def diameter(self,mm): # in g
+        m = mm/1e3 # to kg
+        rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
+        return 2*((3/(4*np.pi))*m/rho)**(1/3) # km
+
+    def mass(self,D): #km
+        rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
+        return rho*(4/3)*np.pi*(D/2)**3*1e3 # mass in g
