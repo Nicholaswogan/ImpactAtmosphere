@@ -111,7 +111,7 @@ class SteamAtm():
 
         # build dictionary of output
         solution = {'Tsurf': Temperature,\
-                    'Psurf': P_init,\
+                    'Psurf': P_init/1e6,\
                     'Ntot': Column,\
                     'mubar' : mubar,\
                     'time' : seconds}
@@ -119,13 +119,17 @@ class SteamAtm():
             solution[name] = Mix[:,i]
         return solution
 
-    def impact_integrate(self,N_H2O_ocean,N_CO2,N_N2,M_i,**kwargs):
-        solution = self.impact(N_H2O_ocean,N_CO2,N_N2,M_i)
+    def init_for_integrate(self,solution):
         Ninit_dict = {}
         species = ['H2','CO','CO2','CH4','N2','NH3']
         for spec in species:
             Ninit_dict[spec] = solution[spec][-1]*solution['Ntot'][-1]
         Ninit_dict['NH3'] = 0.0
+        return Ninit_dict
+
+    def impact_integrate(self,N_H2O_ocean,N_CO2,N_N2,M_i,**kwargs):
+        solution = self.impact(N_H2O_ocean,N_CO2,N_N2,M_i)
+        N_init_dict = self.init_for_integrate(solution)
         out = integrate(Ninit_dict,**kwargs)
         return out
 
