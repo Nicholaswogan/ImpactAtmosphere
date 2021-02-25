@@ -82,8 +82,8 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs
     out['tau_uv'] = tau_uv
     out['mubar'] = mubar
     out['time'] = tvals
-    out['dNHCN_dt'] = dNdt[:,species.index('HCN')]
-    out['dNHaze_dt'] = dNdt[:,species.index('Haze')]
+    for i in range(1,len(species)):
+        out['dN'+species[i]+'_dt'] = dNdt[:,species.index(species[i])]
     out['NH2O_strat'] = N_vals_mol[:,species.index('H2O')]
     out['H2O'] = N_H2O/Navo/out['Ntot']
     for i in range(1,len(species)-3):
