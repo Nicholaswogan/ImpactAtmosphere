@@ -104,7 +104,7 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA", \
     return out
 
 def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
-                  Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
+                  Kzz = 1.0e5, top_atm = 60.0e5, nz = 200, T_trop = 180, \
                   P_trop = 0.1, L = 1.0, F = 0.05, gamma = 4.0e5, **kwargs):
     '''Calculates the HCN mixing ratio as a function of altitude for a
     given HCN production rate (PhiHCN). Assumes HCN hydrolyses in an
