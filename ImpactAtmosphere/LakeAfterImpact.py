@@ -1,11 +1,12 @@
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy import constants
 import sys
 
 from EvolveAtmFort import atmos
 atmos.setup()
 from .hydrolysis_rates import HCN_hydrolysis_rate, HCONH2_hydrolysis_rate
-from .EvolveAtm import diffuseHCN
+from .EvolveAtm import HCN_transport
 from .SteamAtm import SteamAtm
 
 
@@ -14,8 +15,9 @@ class LakeAfterImpact:
     """
 
     def __init__(self,T_surf,pH_ocean,T_lake,pH_lake,Kzz = 1.e5,\
-                   HCNalt = 60.0e5, nz = 60, T_trop = 180., \
-                   P_trop = 0.1, vo = 1.2e-5, zs = 100.e2, zd = 4000.e2, \
+                   HCNalt = 60.0e5, nz = 200, T_trop = 180., \
+                   P_trop = 0.1, L = 1.0, F = 0.05, gamma = 4.0e5, \
+                   vo = 1.2e-5, zs = 100.e2, zd = 4000.e2, \
                    fH2O_trop = 1.0e-6):
         """Set parameters used for the simulation.
 
@@ -41,6 +43,12 @@ class LakeAfterImpact:
             Tropopause temperature (K)
         P_trop: float, optional
             Tropopause pressure (K)
+        L: float, optional
+            g H2O / m3 of cloud
+        F: float, optional
+            Fraction of time it rains
+        gamma: float, optional
+            Average time of storm cycle (s)
         vo : float, optional
             Turnover velocity of the ocean (cm/s)
         zs : float, optional
@@ -52,7 +60,7 @@ class LakeAfterImpact:
         """
         self.species = ['H2O','H2','CO','CO2','CH4','N2','NH3', \
                         'HCN', 'C2Hn', 'Haze','HCONH2','HCOOH']
-        self.Navo = 6.022e23
+        self.Navo = constants.Avogadro
 
         # atmosphere parameters
         self.T_surf = T_surf # Surface T (K)
@@ -68,6 +76,9 @@ class LakeAfterImpact:
         atmos.t_trop = T_trop
         self.P_trop = P_trop # Tropopause pressure (bar)
         atmos.p_trop = P_trop
+        self.L = L # g H2O/m3 of clouds
+        self.F = F # fraction of the time it rains
+        self.gamma = gamma # average time of storm cycle (s)
         self.vo = vo # Turnover velocity of ocean (cm/s)
         self.zs = zs # depth of surface ocean (cm)
         self.zd = zd # depth of deep ocean (cm)
@@ -86,6 +97,18 @@ class LakeAfterImpact:
         # equilibrium constant
         self.pKa_HCN_lake = -8.85+3802./self.T_lake+.01786*self.T_lake
 
+    # def rhs_lake_verbose(self, t, M, PHCN):
+
+        # Input
+        # surface surface partial pressure of HCN
+        # Rainout rate of HCN
+        # Current concentration of stuff in the lake
+
+        # Output
+        # rate of change of stuff in lake (molecules/L/s)
+
+        # return None
+
     def rhs_verbose(self,t,y):
         N = y[:-2]
         HCONH2, HCOOH = y[-2:]/self.Navo
@@ -93,36 +116,32 @@ class LakeAfterImpact:
         # the right-hand-side of the atmosphere
         dNdt, pressure, T_surf, tau_uv, N_H2O, mubar = atmos.rhs_verbose(t,N)
 
-        # compute diffusion of HCN to the surface
-        alt, fHCN = diffuseHCN(dNdt[self.species.index('HCN')], Ts = self.T_surf, \
-                            Ps = pressure, mubar = mubar, pH = self.pH_ocean, \
-                            Kzz = self.Kzz, top_atm = self.HCNalt, nz = self.nz, \
-                            T_trop = self.T_trop, P_trop = self.P_trop, vo = self.vo, \
-                            zs = self.zs, zd = self.zd)
+        # compute HCN transport to surface from diffusion and rainout
+        alt, W_HCN, fHCN = HCN_transport(dNdt[self.species.index('HCN')], Ts = self.T_surf, \
+                                    Ps = pressure, mubar = mubar, pH = self.pH_ocean, \
+                                    Kzz = self.Kzz, top_atm = self.HCNalt, nz = self.nz, \
+                                    T_trop = self.T_trop, P_trop = self.P_trop, \
+                                    L = self.L, F = self.F, gamma = self.gamma, vo = self.vo, \
+                                    zs = self.zs, zd = self.zd)
 
-        # surface partial pressure of HCN
-        PHCN = fHCN[0]*pressure
+        R_HCN = np.sum(W_HCN)*(alt[1]-alt[0]) # rainout rate of HCN (molecules/cm3/s)
+        PHCN = fHCN[0]*pressure # surface partial pressure of HCN
 
-        # dissolved HCN in the lake on a little island
-        HCN_aq = self.kH_lake*PHCN
-
-        # dissolved CN in the lake
-        CN = HCN_aq*10.**(self.pH_lake-self.pKa_HCN_lake)
-
-        # total HCN in the lake
-        sumHCN = HCN_aq + CN
+        HCN_aq = self.kH_lake*PHCN # dissolved HCN in the lake (mol/L)
+        CN = HCN_aq*10.**(self.pH_lake-self.pKa_HCN_lake) # dissolved CN in the lake (mol/L)
+        sumHCN = HCN_aq + CN # total HCN in the lake (mol/L)
 
         # hydrolysis of HCN and HCONH2 in the lake
-        dHCONH2_dt = (self.ktot_lake*sumHCN - self.kform_lake*HCONH2)*self.Navo
-        dHCOOH_dt = (self.kform_lake*HCONH2)*self.Navo
+        dHCONH2_dt = (self.ktot_lake*sumHCN - self.kform_lake*HCONH2)*self.Navo # molecules/L/s
+        dHCOOH_dt = (self.kform_lake*HCONH2)*self.Navo # molecules/L/s
 
         # right-hand-side of ODEs
         RHS = np.append(dNdt,np.array([dHCONH2_dt,dHCOOH_dt]))
 
-        return RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN
+        return RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN, R_HCN
 
     def rhs(self,t,y):
-        RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN = self.rhs_verbose(t,y)
+        RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN, R_HCN = self.rhs_verbose(t,y)
         return RHS
 
     def integrate(self,init_dict,tspan=[0,np.inf],H2end=1e-2,method = "LSODA",rtol=1e-6,**kwargs):
@@ -187,10 +206,11 @@ class LakeAfterImpact:
         HCN_aq = np.zeros(len(tvals))
         CN = np.zeros(len(tvals))
         sumHCN = np.zeros(len(tvals))
+        R_HCN = np.zeros(len(tvals))
         atmos.tau_uv_init = 100.
         for i in range(0,len(tvals)):
             dydt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i],mubar[i], PHCN[i], \
-            HCN_aq[i], CN[i], sumHCN[i] = \
+            HCN_aq[i], CN[i], sumHCN[i], R_HCN[i] = \
             self.rhs_verbose(tvals[i],yvals[i])
 
         # build a dictionary of output
@@ -218,6 +238,7 @@ class LakeAfterImpact:
         out['sumHCN_lake'] = sumHCN
         out['HCONH2_lake'] = yvals[:,-2]/self.Navo
         out['HCOOH_lake'] = yvals[:,-1]/self.Navo
+        out['HCN_rainout'] = R_HCN
 
         return out
 

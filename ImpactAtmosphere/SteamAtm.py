@@ -129,7 +129,7 @@ class SteamAtm():
 
     def impact_integrate(self,N_H2O_ocean,N_CO2,N_N2,M_i,**kwargs):
         solution = self.impact(N_H2O_ocean,N_CO2,N_N2,M_i)
-        N_init_dict = self.init_for_integrate(solution)
+        Ninit_dict = self.init_for_integrate(solution)
         out = integrate(Ninit_dict,**kwargs)
         return out
 

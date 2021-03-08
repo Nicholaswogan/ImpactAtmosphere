@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy import constants
 import sys
 
 from EvolveAtmFort import atmos
@@ -8,7 +9,8 @@ from EvolveAtmFort import diffusion
 from .hydrolysis_rates import HCN_hydrolysis_rate
 
 
-def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs):
+def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA", \
+              fH2O_trop = 1.0e-6, T_trop = 180., P_trop = 0.1 ,**kwargs):
     '''Evolves a Hadean Earth atmosphere using a simple 0-D photochemical
     model from time tspan[0] to tspan[1] given the initial conditions Ninit_dict.
     Uses `scipy.integrate.solve_ivp`.
@@ -20,12 +22,14 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs
     Ninit_dict : dict
         Dictionary containing initial atmosphere in molecules/cm^2. Must contain
         the following 9 dictionary items: H2, CO, CO2, CH4, N2, NH3
-    out_dict: bool
-        If true, then the output will be a dictionary. If false, then the output
-        will be a numpy array containing the abundance of each molecule at each
-        timestep in molecules/cm^2.
     method: str, optional
         Method used by the scipy integrator.
+    fH2O_trop: float, optional
+        H2O mixing ratio in the stratosphere.
+    T_trop: float, optional
+        Temperature at the tropopause (K)
+    P_trop: float, optional
+        Total pressure at the tropopause (bar)
     **kwargs:
         The same optional arguments as scipy.integrate.solve_ivp,
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
@@ -36,9 +40,14 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs
         Dictionary defining the state of the atmosphere as a function of time.
     '''
 
+    # load free parameters
+    atmos.t_trop = T_trop
+    atmos.p_trop = P_trop
+    atmos.fh2o = fH2O_trop
+
     # species
     species = ['H2O','H2','CO','CO2','CH4','N2','NH3', 'HCN', 'C2Hn', 'Haze']
-    Navo = 6.02214129e23
+    Navo = constants.Avogadro
     # dict to array
     Ninit = np.zeros(len(species))
     Ninit[1:-3] = np.array([Ninit_dict[key]*Navo for key in species[1:-3]])
@@ -94,12 +103,13 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA",**kwargs
 
     return out
 
-def diffuseHCN(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
-            Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
-            P_trop = 0.1, **kwargs):
+def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
+                  Kzz = 1.0e5, top_atm = 60.0e5, nz = 60, T_trop = 180, \
+                  P_trop = 0.1, L = 1.0, F = 0.05, gamma = 4.0e5, **kwargs):
     '''Calculates the HCN mixing ratio as a function of altitude for a
     given HCN production rate (PhiHCN). Assumes HCN hydrolyses in an
-    ocean at the lower boundary.
+    ocean at the lower boundary, and rainout from the atmosphere following
+    Giorgi and Chameides (1985).
 
     Parameters
     ----------
@@ -123,21 +133,34 @@ def diffuseHCN(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
         Tropospheric temperature (K)
     P_trop: float, optional
         Tropospheric pressure (bar)
+    L: float, optional
+        g H2O / m3 of cloud
+    F: float, optional
+        Fraction of time it rains
+    gamma: float, optional
+        Average time of storm cycle (s)
 
     Returns
     -------
     alt: numpy array length nz
         The altitude of each HCN mixing ratio (cm).
+    WHCN: numpy array length nz
+        The rainout rate of HCN as a function of altitude (molecules/cm3/s)
     fHCN: numpy array length nz
         The HCN mixing ratio as a function of altitude in the atmosphere.
     '''
+    diffusion.lll = L # g H2O/m3 of clouds
+    diffusion.fff = F # fraction of the time it rains
+    diffusion.gamma = gamma # average time of storm cycle (s)
 
     vd_HCN = HCN_vdep(Ts,pH,**kwargs)
 
-    alt, fHCN = diffusion.diffuse(PhiHCN, Ts, Ps, mubar, vd_HCN, \
-                                  Kzz, top_atm, nz, T_trop, P_trop)
+    alt, WHCN, fHCN, ierr = diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN,\
+                                                    Kzz, top_atm, nz, T_trop, P_trop)
+    if ierr:
+        raise Exception('Linear solver failed in fortran subroutine hcn_transport')
 
-    return alt, fHCN
+    return alt, WHCN, fHCN
 
 def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
     '''Calculates deposition velocity (cm/s) of HCN into the ocean assuming
@@ -162,8 +185,8 @@ def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
         Deposition velocity of HCN into the ocean (cm/s)
     '''
     vp_HCN = 0.005 # piston velocity of HCN (cm/s). WARNING! need to confirm this is reasonable
-    CC = 6.022e20 # avagadros number/1e3
-    k = 1.3807e-16 # boltzman (cgs units)
+    CC = constants.Avogadro/1.0e3 # avagadros number/1e3
+    k = constants.Boltzmann*1e7 # boltzman (cgs units)
 
     # HCN henry's law constant
     lnkH=8205.7/T-25.323   #in M/atm
