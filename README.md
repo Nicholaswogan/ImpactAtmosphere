@@ -8,7 +8,6 @@ This repository builds upon [Zahnle et al. (2020)](https://iopscience.iop.org/ar
 To install ImpactAtmosphere, you must have the following installed on your system
 - `Python` (>3.6.0) with the `numpy` and `cantera` packages. Install `cantera` using conda: `conda install --channel cantera cantera`, or follow [this guide](https://cantera.org/install/index.html).
 - The GNU compiler collection, version >4.9.4 (includes `gfortran`, `gcc`, etc.). If you are using a Mac, I suggest installing it with Homebrew: `brew install gcc`. For other operating systems [follow this GNU installation guide](https://gcc.gnu.org/install/binaries.html).
-- The `lapack` library. You probably don't have to worry about this because most operating systems have `lapack` installed by default. For example, any MacOS should have `lapack` installed in `/urs/lib/`.
 
 
  **Install**:<br>

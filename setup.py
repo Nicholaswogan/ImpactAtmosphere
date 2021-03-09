@@ -20,6 +20,6 @@ extensions = [Extension(name="EvolveAtmFort",
 setup(name = 'ImpactAtmosphere',
       python_requires='>3.6.0',
       packages=['ImpactAtmosphere'],
-      version='4.1.1',
+      version='4.1.2',
       ext_modules=extensions,
       configuration=configuration)

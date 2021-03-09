@@ -155,10 +155,8 @@ def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
 
     vd_HCN = HCN_vdep(Ts,pH,**kwargs)
 
-    alt, WHCN, fHCN, ierr = diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN,\
-                                                    Kzz, top_atm, nz, T_trop, P_trop)
-    if ierr:
-        raise Exception('Linear solver failed in fortran subroutine hcn_transport')
+    alt, WHCN, fHCN = diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN,\
+                                              Kzz, top_atm, nz, T_trop, P_trop)
 
     return alt, WHCN, fHCN
 

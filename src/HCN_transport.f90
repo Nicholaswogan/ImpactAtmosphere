@@ -29,7 +29,7 @@ module diffusion
 
 contains
   subroutine hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, tope, nz, &
-                           T_trop1, P_trop1, zm, WHCN, fHCN, ierr)
+                           T_trop1, P_trop1, zm, WHCN, fHCN)
     implicit none
 
     ! input
@@ -49,7 +49,6 @@ contains
     double precision, dimension(nz),intent(out) :: fHCN
     double precision, dimension(nz),intent(out) :: WHCN
     double precision, dimension(nz), intent(out) :: zm
-    logical,intent(out) :: ierr ! for errors
 
     ! other
     integer i
@@ -64,12 +63,10 @@ contains
     double precision, dimension(nz) :: nm
 
     double precision, dimension(nz,nz) :: AAA
-    double precision, dimension(nz) :: bbbb, DD
+    double precision, dimension(nz) :: bbbb, DD, xc
     double precision, dimension(nz-1) :: DDL, DDU
     double precision :: D,D0,D1
     double precision :: E,E1,E2
-    integer, dimension(nz) :: IPIV
-    integer info
     double precision :: dz ! grid spacing (cm)
 
     ! for rainout stuff
@@ -78,9 +75,6 @@ contains
     double precision :: f_H2O_below, f_H2O_above, phiB_wh2o, phiT_wh2o
     double precision :: k_bar, Q_i, lnkH, H_HCN
     integer :: ind_trop
-
-    ! start without errors
-    ierr = .false.
 
     ! make input vars global
     TT_surf = Ts
@@ -200,13 +194,8 @@ contains
     bbbb(nz) = - PhiHCN/nm(nz)/dz
 
     !!!!!!! solve the linear system of equations !!!!!!!
-    call dgtsv (nz, 1, DDL, DD, DDU, bbbb, nz, INFO)
-    if (info.ne.0) then
-      print*,'Linear solve failed in subroutine hcn_transport'
-      ierr = .true.
-    endif
-
-    fHCN = bbbb
+    call tridiag(nz,DDL,DD,DDU,bbbb,xc)
+    fHCN = xc
     WHCN = fHCN*nm*k_star
 
   end subroutine
@@ -267,3 +256,30 @@ contains
   end subroutine
 
 end module
+
+subroutine tridiag(l,a,b,c,d,xc)
+  implicit none
+  integer,intent(in) :: l
+  double precision, dimension(l), intent(in) :: b,d
+  double precision, dimension(l-1), intent(in) :: a,c
+  double precision, dimension(l), intent(out) :: xc
+  double precision, dimension(l) :: bc,dc
+  double precision, dimension(l-1) :: ac,cc
+  double precision :: mc
+  integer i, ii
+  ac = a
+  bc = b
+  cc = c
+  dc = d
+  do i=2,l
+    mc = ac(i-1)/bc(i-1)
+    bc(i) = bc(i) - mc*cc(i-1)
+    dc(i) = dc(i) - mc*dc(i-1)
+  enddo
+  xc = bc
+  xc(l) = dc(l)/bc(l)
+  do i=1,l-1
+    ii = l-i
+    xc(ii) = (dc(ii)-cc(ii)*xc(ii+1))/bc(ii)
+  enddo
+end subroutine
