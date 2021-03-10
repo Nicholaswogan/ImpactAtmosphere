@@ -1,9 +1,17 @@
 module diffusion
+  implicit none
 
   ! free parameters
+  double precision :: tope = 60.d5 ! top of atmosphere (cm)
+  double precision :: T_trop = 180.d0 ! tropopuase T (K)
+  double precision :: P_trop = 0.1d0 ! tropause P (bar)
   double precision :: LLL = 1.d0 ! g H2O/m3 of clouds
   double precision :: FFF = 0.05d0 ! fraction of the time it rains
   double precision :: gamma = 4.d5 ! average time of storm cycle (s)
+  double precision :: rain_scaling = 1.d0 ! scale rain rate
+  double precision :: vo = 1.2d-5 ! The turnover velocity of the ocean (cm/s)
+  double precision :: zs = 100.d2 ! The depth of the surface ocean (cm)
+  double precision :: zd = 4000.d2 ! The depth of the deep ocean (cm)
 
   ! planet specific
   double precision :: g = 981.d0 ! cm/s2
@@ -15,21 +23,24 @@ module diffusion
   double precision, parameter :: c2 = 1.d-9 ![m3/cm3][L H2O/g H2O]
   double precision, parameter :: MH2O = 18.d0 ! g H2O/mol H2O
   double precision, parameter :: rho_H2O = 1000.d0 ! g H2O/L H2O
+  double precision, parameter :: CC = n_avo/rho_H2O ! (molecules L)/(cm3 mol)
+  double precision, parameter :: vp_HCN = 0.005d0 ! HCN piston velocity cm/s
 
   ! for making inputs global to module
   double precision :: TT_surf
   double precision :: ppressure
   double precision :: mmubar
+  ! other global
   double precision :: ztrop
   double precision :: m_slope
-  double precision :: T_trop = 180.d0 ! tropopuase T (K)
-  double precision :: P_trop = 0.1d0 ! tropause P (bar)
 
-  logical :: rainout_on = .true. ! if true then
+  logical :: rainout_on = .true. ! if true then let it rain
+  logical :: ierr
+  double precision :: rtol = 1.d-5 ! Require HCN conservation to within this factor
 
 contains
-  subroutine hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN, Kzz, tope, nz, &
-                           T_trop1, P_trop1, zm, WHCN, fHCN)
+  subroutine hcn_transport(PhiHCN, Ts, Ps, mubar, Kzz, ocean_pH, nz, &
+                           zm, nm, Tm, fHCN, mHCN_s, mHCN_d, WHCN, wH2O, rainout, ocean2atmos)
     implicit none
 
     ! input
@@ -37,55 +48,51 @@ contains
     double precision, intent(in) :: Ts ! surface T (K)
     double precision, intent(in) :: Ps ! surface P (bar)
     double precision, intent(in) :: mubar ! mean molecular weight (g/mol)
-    double precision, intent(in) :: vd_HCN ! HCN deposition velocity (cm/s)
     double precision, intent(in) :: Kzz ! diffusion (cm2/s)
-    double precision, intent(in) :: tope ! top of atmosphere (cm)
+    double precision, intent(in) :: ocean_pH ! ocean pH
     integer, intent(in) :: nz ! number of vertical layers
-    double precision, intent(in) :: T_trop1 ! top of atmosphere (cm)
-    double precision, intent(in) :: P_trop1 ! top of atmosphere (cm)
-    ! double precision, intent(in) :: HCN_alt ! altitude HCN is injected into atmosphere (cm)
 
     ! output
+    double precision, dimension(nz), intent(out) :: zm, nm, Tm
     double precision, dimension(nz),intent(out) :: fHCN
-    double precision, dimension(nz),intent(out) :: WHCN
-    double precision, dimension(nz), intent(out) :: zm
+    double precision, dimension(nz),intent(out) :: WHCN, wH2O
+    double precision, intent(out) :: mHCN_s, mHCN_d, rainout, ocean2atmos
 
-    ! other
+    ! local
     integer i
     double precision :: bote = 0.d0
     double precision, dimension(nz+1) :: ze
     double precision, dimension(nz+1) :: Pe
     double precision, dimension(nz+1) :: Te
     double precision, dimension(nz+1) :: ne
-
     double precision, dimension(nz) :: Pm
-    double precision, dimension(nz) :: Tm
-    double precision, dimension(nz) :: nm
-
-    double precision, dimension(nz,nz) :: AAA
-    double precision, dimension(nz) :: bbbb, DD, xc
-    double precision, dimension(nz-1) :: DDL, DDU
-    double precision :: D,D0,D1
-    double precision :: E,E1,E2
+    ! double precision, dimension(nz) :: Tm
+    ! double precision, dimension(nz) :: nm
     double precision :: dz ! grid spacing (cm)
-
+    ! matrix stuff
+    double precision, dimension(nz+2,nz+2) :: AAA
+    double precision, dimension(nz+2) :: bbbb
+    integer, dimension(nz+2) :: ipiv
     ! for rainout stuff
-    double precision, dimension(nz) :: wH2O, k_star
+    double precision, dimension(nz) :: k_star
     double precision, dimension(nz) :: f_H2Om
     double precision :: f_H2O_below, f_H2O_above, phiB_wh2o, phiT_wh2o
     double precision :: k_bar, Q_i, lnkH, H_HCN
-    integer :: ind_trop
+    integer :: ind_trop, info
+    ! for ocean
+    double precision :: alpha_HCN, ktot, HCN_destroyed
+
+    ! start without errors
+    ierr = .false.
 
     ! make input vars global
     TT_surf = Ts
     ppressure = Ps
     mmubar = mubar
-    T_trop = T_trop1
-    P_trop = P_trop1
 
     !!!!!!! set up the atmosphere !!!!!!!
 
-    ! troposphere altitude (cm)
+    ! tropopause altitude (cm)
     ztrop = -k_boltz/(mubar/N_avo*g)* &
               (T_trop-TT_surf)*(1.d0/dlog(T_trop/TT_surf)) &
               *dlog(p_trop/ppressure)
@@ -149,6 +156,7 @@ contains
     wH2O(ind_trop) = - (Kzz*ne(ind_trop-1)/dz**2.d0)*f_H2Om(ind_trop) &
                      + (Kzz*ne(ind_trop-1)/dz**2.d0)*f_H2Om(ind_trop-1) &
                      - phiT_wh2o/dz
+    wH2O = wH2O * rain_scaling
     ! k star
     k_star = 0.d0
     do i=1,ind_trop
@@ -165,38 +173,65 @@ contains
 
     !!!!!!! Set up the linear system of equations !!!!!!!
 
-    ! middle of atmosphere
-    DDL = 0.d0
-    DD = 0.d0
-    DDU = 0.d0
-    do i=2,nz-1
-      DDU(i) = Kzz*ne(i+1)/dz**2.d0/nm(i)
-      DD(i) = (-Kzz*ne(i+1)/dz**2.d0 - Kzz*ne(i)/dz**2.d0)*(1.d0/nm(i)) - k_star(i)
-      DDL(i-1) = Kzz*ne(i)/dz**2.d0/nm(i)
+    AAA = 0.d0 ! the matrix
+
+    ! The deep ocean
+    call HCN_hydrolysis_rate(Te(1), ocean_pH, ktot)
+    AAA(1,1) = -ktot - vo/zd
+    AAA(1,2) = vo/zd
+
+    ! The surface ocean
+    lnkH = 8205.7d0/max(Ts,273.d0)-25.323d0 ! in M/atm
+    alpha_HCN = dexp(lnkH)/1.013d0 ! M/bar
+    AAA(2,1) = vo/zs
+    AAA(2,2) = -vp_HCN/zs - ktot - vo/zs
+    AAA(2,3) = vp_HCN*alpha_HCN*Ps/zs + k_star(1)*nm(1)*dz/(CC*zs)
+    do i = 2,ind_trop
+      AAA(2,i+2) = k_star(i)*nm(i)*dz/(CC*zs) ! rain falling in ocean
     enddo
 
-    ! lower boundary
-    D = Kzz*ne(2)/(nm(1)*dz**2.d0)
-    D0 = - D - k_star(1) - vd_HCN/dz
-    D1 = D
-    DD(1) = D0
-    DDU(1) = D1
+    ! First layer of atmosphere
+    AAA(3,2) = vp_HCN*CC/(nm(1)*dz)
+    AAA(3,3) = -Kzz*ne(2)/(nm(1)*dz**2.d0) - k_star(1) - vp_HCN*alpha_HCN*Ps*CC/(nm(1)*dz)
+    AAA(3,4) = Kzz*ne(2)/(nm(1)*dz**2.d0)
+
+    ! middle of atmosphere
+    do i=2,nz-1
+      AAA(i+2,i+3) = Kzz*ne(i+1)/dz**2.d0/nm(i) ! upper diagonal
+      AAA(i+2,i+2) = (-Kzz*ne(i+1)/dz**2.d0 - Kzz*ne(i)/dz**2.d0)*(1.d0/nm(i)) - k_star(i) ! diagonal
+      AAA(i+2,i+1) = Kzz*ne(i)/dz**2.d0/nm(i)! lower diagonal
+    enddo
 
     ! upper boundary
-    E = Kzz*ne(nz)/(nm(nz)*dz**2.d0)
-    E1 = E
-    E2 = - E - k_star(nz)
-    DDL(nz-1) = E1
-    DD(nz) = E2
+    AAA(nz+2,nz+1) = Kzz*ne(nz)/(nm(nz)*dz**2.d0)
+    AAA(nz+2,nz+2) = - Kzz*ne(nz)/(nm(nz)*dz**2.d0) - k_star(nz)
 
     ! setup the b matrix
     bbbb = 0.d0
-    bbbb(nz) = - PhiHCN/nm(nz)/dz
+    bbbb(nz+2) = - PhiHCN/nm(nz)/dz
 
     !!!!!!! solve the linear system of equations !!!!!!!
-    call tridiag(nz,DDL,DD,DDU,bbbb,xc)
-    fHCN = xc
-    WHCN = fHCN*nm*k_star
+    call dgesv (nz+2, 1, AAA, nz+2, ipiv, bbbb, nz+2, info)
+    if (info .ne. 0) then
+      print*,'Linear solve failed in subroutine hcn_transport'
+      ierr = .true.
+    endif
+
+    mHCN_d = bbbb(1)
+    mHCN_s = bbbb(2)
+    fHCN = bbbb(3:)
+    WHCN = fHCN*nm*k_star ! HCN rainout rate vs altitude
+    rainout = -sum(WHCN)*(zm(2)-zm(1)) ! HCN flux into the ocean from rain
+    ocean2atmos = -vp_HCN*(alpha_HCN*Ps*fHCN(1)-mHCN_s)*CC ! HCN flux over surface boundary layer of ocean
+
+    ! check for conservation of molecules
+    HCN_destroyed = ktot*mHCN_d*CC*zd + ktot*mHCN_s*CC*zs
+    if ((HCN_destroyed > PhiHCN + PhiHCN*rtol) .or. (HCN_destroyed < PhiHCN - PhiHCN*rtol))  then
+      print*,'Warning: Poor conservation of HCN molecules.'
+      print*,'HCN input = ',PhiHCN,' (molecules/cm2/s)'
+      print*,'HCN destruction = ',HCN_destroyed,'(molecules/cm2/s)'
+      ierr = .true.
+    endif
 
   end subroutine
 
@@ -256,30 +291,3 @@ contains
   end subroutine
 
 end module
-
-subroutine tridiag(l,a,b,c,d,xc)
-  implicit none
-  integer,intent(in) :: l
-  double precision, dimension(l), intent(in) :: b,d
-  double precision, dimension(l-1), intent(in) :: a,c
-  double precision, dimension(l), intent(out) :: xc
-  double precision, dimension(l) :: bc,dc
-  double precision, dimension(l-1) :: ac,cc
-  double precision :: mc
-  integer i, ii
-  ac = a
-  bc = b
-  cc = c
-  dc = d
-  do i=2,l
-    mc = ac(i-1)/bc(i-1)
-    bc(i) = bc(i) - mc*cc(i-1)
-    dc(i) = dc(i) - mc*dc(i-1)
-  enddo
-  xc = bc
-  xc(l) = dc(l)/bc(l)
-  do i=1,l-1
-    ii = l-i
-    xc(ii) = (dc(ii)-cc(ii)*xc(ii+1))/bc(ii)
-  enddo
-end subroutine

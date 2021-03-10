@@ -103,9 +103,10 @@ def integrate(Ninit_dict,tspan=[0,np.inf],H2end = 1e-2,method = "LSODA", \
 
     return out
 
-def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
-                  Kzz = 1.0e5, top_atm = 60.0e5, nz = 200, T_trop = 180, \
-                  P_trop = 0.1, L = 1.0, F = 0.05, gamma = 4.0e5, **kwargs):
+def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, Kzz = 1.0e5, pH = 7, \
+                  nz = 200, top_atm = 60.0e5, T_trop = 180, \
+                  P_trop = 0.1, L = 1.0, F = 0.05, gamma = 4.0e5, rain_scaling = 1.0,\
+                  vo = 1.2e-5, zs = 100.0e2, zd = 4000.0e2):
     '''Calculates the HCN mixing ratio as a function of altitude for a
     given HCN production rate (PhiHCN). Assumes HCN hydrolyses in an
     ocean at the lower boundary, and rainout from the atmosphere following
@@ -121,14 +122,14 @@ def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
         The surface pressure (bar)
     mubar: float, optional
         The mean molar weight of the atmosphere (g/mol)
-    pH: float, optional
-        The pH of the ocean (cm/s)
     Kzz: float, optional
         The eddy diffusion coefficient (cm^2/s)
-    top_atm: float, optional
-        The top of the atmosphere (cm)
+    pH: float, optional
+        The pH of the ocean
     nz: integer, optional
         The number of vertical descritization in the atmosphere.
+    top_atm: float, optional
+        The top of the atmosphere (cm)
     T_trop: float, optional
         Tropospheric temperature (K)
     P_trop: float, optional
@@ -139,30 +140,51 @@ def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, pH = 7, \
         Fraction of time it rains
     gamma: float, optional
         Average time of storm cycle (s)
+    rain_scaling: float, optional
+        Scale rain rate
+    vo: float, optional
+        The turnover velocity of the ocean (cm/s)
+    zs: float, optional
+        The depth of the surface ocean (cm)
+    zd: float, optional
+        The depth of the deep ocean (cm). Note zs + zd = total ocean depth.
+
 
     Returns
     -------
-    alt: numpy array length nz
-        The altitude of each HCN mixing ratio (cm).
-    WHCN: numpy array length nz
-        The rainout rate of HCN as a function of altitude (molecules/cm3/s)
-    fHCN: numpy array length nz
-        The HCN mixing ratio as a function of altitude in the atmosphere.
+    out: dict
+        Dictionary containing HCN vs altitude, and information about the atmosphere.
     '''
+    diffusion.tope = top_atm
+    diffusion.t_trop = T_trop
+    diffusion.p_trop = P_trop
     diffusion.lll = L # g H2O/m3 of clouds
     diffusion.fff = F # fraction of the time it rains
     diffusion.gamma = gamma # average time of storm cycle (s)
+    diffusion.rain_scaling = rain_scaling
+    diffusion.vo = vo
+    diffusion.zs = zs
+    diffusion.zd = zd
 
-    vd_HCN = HCN_vdep(Ts,pH,**kwargs)
+    alt, nm, Tm, fHCN, mHCN_s, mHCN_d, WHCN, WH2O, rainout, ocean2atmos = \
+                    diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, Kzz, pH, nz)
+    out = {} # output dict
+    out['alt'] = alt
+    out['nm'] = nm
+    out['Tm'] = Tm
+    out['fHCN'] = fHCN
+    out['mHCN_s'] = mHCN_s
+    out['mHCN_d'] = mHCN_d
+    out['WHCN'] = WHCN
+    out['WH2O'] = WH2O
+    out['HCN_rainout'] = rainout
+    out['HCN_ocean2atmos'] = ocean2atmos
 
-    alt, WHCN, fHCN = diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, vd_HCN,\
-                                              Kzz, top_atm, nz, T_trop, P_trop)
-
-    return alt, WHCN, fHCN
+    return out
 
 def HCN_vdep(T, pH, vo = 1.2e-5, zs = 100e2, zd = 4000e2):
     '''Calculates deposition velocity (cm/s) of HCN into the ocean assuming
-    it is destroyed from hydrolysis.
+    it is destroyed from hydrolysis. Assumes no HCN rainout.
 
     Parameters
     ----------

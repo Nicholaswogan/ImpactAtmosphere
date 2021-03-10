@@ -6,7 +6,7 @@ def configuration(parent_package='',top_path=None):
 
 from numpy.distutils.core import setup, Extension
 
-sources = ['src/HCN_transport.f90', 'src/EvolveAtmFort.f90', 'src/minpack/dpmpar.f', 'src/minpack/enorm.f',
+sources = ['src/hydrolysis_rates.f90','src/HCN_transport.f90', 'src/EvolveAtmFort.f90', 'src/minpack/dpmpar.f', 'src/minpack/enorm.f',
            'src/minpack/fdjac2.f', 'src/minpack/lmdif.f', 'src/minpack/lmdif1.f',
            'src/minpack/lmdif2.f', 'src/minpack/lmpar.f', 'src/minpack/qrfac.f', 'src/minpack/qrsolv.f']
 
@@ -20,6 +20,6 @@ extensions = [Extension(name="EvolveAtmFort",
 setup(name = 'ImpactAtmosphere',
       python_requires='>3.6.0',
       packages=['ImpactAtmosphere'],
-      version='4.1.2',
+      version='4.2.0',
       ext_modules=extensions,
       configuration=configuration)
