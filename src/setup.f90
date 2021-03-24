@@ -2,6 +2,9 @@ subroutine setup
   implicit none
   double precision, dimension(7) :: flux0
 
+  ! tau_uv_init
+  tau_uv_init = 100.d0
+
   !!!!! reaction rates
   k = 0.d0
   ! N2D reactions

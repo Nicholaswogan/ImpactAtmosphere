@@ -153,7 +153,7 @@ def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, Kzz = 1.0e5, pH = 7, \
     Returns
     -------
     out: dict
-        Dictionary containing HCN vs altitude, and information about the atmosphere.
+        Dictionary containing HCN vs altitude, and other information about the atmosphere.
     '''
     diffusion.tope = top_atm
     diffusion.t_trop = T_trop
@@ -165,20 +165,23 @@ def HCN_transport(PhiHCN, Ts = 298, Ps = 1, mubar = 28.0, Kzz = 1.0e5, pH = 7, \
     diffusion.vo = vo
     diffusion.zs = zs
     diffusion.zd = zd
-
+    # see HCN_transport.f90
     alt, nm, Tm, fHCN, mHCN_s, mHCN_d, WHCN, WH2O, rainout, ocean2atmos = \
                     diffusion.hcn_transport(PhiHCN, Ts, Ps, mubar, Kzz, pH, nz)
+    if diffusion.ierr:
+        raise Exception('Failed to compute HCN transport')
+
     out = {} # output dict
-    out['alt'] = alt
-    out['nm'] = nm
-    out['Tm'] = Tm
-    out['fHCN'] = fHCN
-    out['mHCN_s'] = mHCN_s
-    out['mHCN_d'] = mHCN_d
-    out['WHCN'] = WHCN
-    out['WH2O'] = WH2O
-    out['HCN_rainout'] = rainout
-    out['HCN_ocean2atmos'] = ocean2atmos
+    out['alt'] = alt # altitude (cm)
+    out['nm'] = nm # number density (molecules/cm3)
+    out['Tm'] = Tm # Temperature vs altitude (K)
+    out['fHCN'] = fHCN # HCN mixing ratio vs altitude
+    out['mHCN_s'] = mHCN_s # HCN concentration in surface ocean (mol/L)
+    out['mHCN_d'] = mHCN_d # HCN concentration in deep ocean (mol/L)
+    out['WHCN'] = WHCN # HCN rainout rate vs altitude (molecules/cm3/s)
+    out['WH2O'] = WH2O # H2O raining rate vs altitude (molecules/cm3/s)
+    out['HCN_rainout'] = rainout # HCN rainout rate sum(WHCN)*dz (molecules/cm2/s)
+    out['HCN_ocean2atmos'] = ocean2atmos # HCN flux (molecules/cm2/s) from across ocean-atmosphere boundary (not including rainout)
 
     return out
 
