@@ -1,4 +1,4 @@
-      subroutine lmdif2(fcn2,m,n,x,fvec,tol,info,iwa,wa,lwa)
+      subroutine lmdif2(fcn2,m,n,x,fvec,tol,info,iwa,wa,lwa,maxfev)
       integer m,n,info,lwa
       integer iwa(n)
       double precision tol
@@ -115,7 +115,7 @@ c
 c
 c     call lmdif.
 c
-      maxfev = 200*(n + 1)
+C      maxfev = 200*(n + 1)
       ftol = tol
       xtol = tol
       gtol = zero
