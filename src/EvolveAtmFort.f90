@@ -111,9 +111,9 @@ contains
     x_initial = (/ T_s, P_surf,P_H2O_surf /)
 
     ! solve non-linear system with MINPACK
-    call lmdif1(fcn,mm,nn,x_initial,fvec,tol,info,iwa,wa,lwa)
+    call lmdif1(fcn,mm,nn,x_initial,fvec,tol,info,iwa,wa,lwa,100000)
     if ((info.ne.1) .and. (info.ne.2) .and. (info.ne.3) .and. (info.ne.4)) then
-      print*,'Non-linear solver failed in subroutine rhs_all'
+      print*,'Non-linear solver failed in subroutine rhs_all ',info
       ierr = .true.
     endif
 
