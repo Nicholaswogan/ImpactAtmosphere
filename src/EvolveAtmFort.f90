@@ -198,7 +198,7 @@ contains
       sum_ions = sum_ions + N(j)
     enddo
 
-    CH4_ion_breakup = Phi_ion(LH2)/sum_ions &
+    CH4_ion_breakup = Phi_ion(LH2)*(N(LCH4)/sum_ions) &
                       + Phi_ion(LN2)*(N(LCH4)/(sum_ions - N(LN2)) &
                       + N(LCO)/(sum_ions -N(LN2))*N(LCH4) &
                          /(sum_ions -N(LN2) -N(LCO)) &
