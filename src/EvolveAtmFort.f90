@@ -362,9 +362,9 @@ contains
     x(1) = dlog(tau_uv_init) ! intial condtions
 
     ! solve nonlinear system
-    call lmdif2(fcn2,1,1,x,fvec,tol,info,iwa,wa,lwa)
+    call lmdif2(fcn2,1,1,x,fvec,tol,info,iwa,wa,lwa,10000)
     if ((info.ne.1) .and. (info.ne.2) .and. (info.ne.3) .and. (info.ne.4)) then
-      print*,'Non-linear solver failed in subroutine rhs'
+      print*,'Non-linear solver failed in subroutine rhs ',info
       ierr = .true.
     endif
     tau_uv_init = dexp(x(1))
@@ -406,7 +406,7 @@ contains
     ! solve nonlinear system
     call lmdif2(fcn2,1,1,x,fvec,tol,info,iwa,wa,lwa,10000)
     if ((info.ne.1) .and. (info.ne.2) .and. (info.ne.3) .and. (info.ne.4)) then
-      print*,'Non-linear solver failed in subroutine rhs_verbose'
+      print*,'Non-linear solver failed in subroutine rhs_verbose ',info
       ierr = .true.
     endif
     tau_uv_init = dexp(x(1))

@@ -43,6 +43,6 @@ program test
   call hcn_transport(PhiHCN, Ts, Ps, mubar, Kzz, ocean_pH,nz, &
                      zm, nm, Tm, fHCN, mHCN_s, mHCN_d, WHCN,wh2o, rainout, ocean2atmos)
 
-  print*,fhcn
+  ! print*,fhcn
 
 end program
