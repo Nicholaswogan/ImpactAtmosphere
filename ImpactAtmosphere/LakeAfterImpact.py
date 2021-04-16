@@ -130,6 +130,8 @@ class LakeAfterImpact:
         alt = out['alt']
         W_HCN = out['WHCN']
         fHCN = out['fHCN']
+        mHCN_s_ocean = out['mHCN_s']
+        mHCN_d_ocean = out['mHCN_d']
 
         R_HCN = out['HCN_rainout'] # rainout rate of HCN (molecules/cm3/s)
         ocean2atmos = out['HCN_ocean2atmos']
@@ -146,10 +148,12 @@ class LakeAfterImpact:
         # right-hand-side of ODEs
         RHS = np.append(dNdt,np.array([dHCONH2_dt,dHCOOH_dt]))
 
-        return RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN, R_HCN, ocean2atmos
+        return RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN, R_HCN, ocean2atmos, \
+               mHCN_s_ocean, mHCN_d_ocean
 
     def rhs(self,t,y):
-        RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN, R_HCN, ocean2atmos = self.rhs_verbose(t,y)
+        RHS, pressure, T_surf, tau_uv, N_H2O, mubar, PHCN, HCN_aq, CN, sumHCN,\
+         R_HCN, ocean2atmos, mHCN_s_ocean, mHCN_d_ocean = self.rhs_verbose(t,y)
         return RHS
 
     def integrate(self,init_dict,tspan=[0,np.inf],H2end=1e-2,method = "LSODA",rtol=1e-6,**kwargs):
@@ -216,10 +220,12 @@ class LakeAfterImpact:
         sumHCN = np.zeros(len(tvals))
         R_HCN = np.zeros(len(tvals))
         ocean2atmos = np.zeros(len(tvals))
+        mHCN_s_ocean = np.zeros(len(tvals))
+        mHCN_d_ocean = np.zeros(len(tvals))
         atmos.tau_uv_init = 100.
         for i in range(0,len(tvals)):
             dydt[i],pressure[i],T_surf[i],tau_uv[i],N_H2O[i],mubar[i], PHCN[i], \
-            HCN_aq[i], CN[i], sumHCN[i], R_HCN[i], ocean2atmos[i] = \
+            HCN_aq[i], CN[i], sumHCN[i], R_HCN[i], ocean2atmos[i], mHCN_s_ocean[i], mHCN_d_ocean[i] = \
             self.rhs_verbose(tvals[i],yvals[i])
 
         # build a dictionary of output
@@ -249,6 +255,8 @@ class LakeAfterImpact:
         out['HCOOH_lake'] = yvals[:,-1]/self.Navo
         out['HCN_rainout'] = R_HCN
         out['HCN_ocean2atmos'] = ocean2atmos
+        out['mHCN_s_ocean'] = mHCN_s_ocean
+        out['mHCN_d_ocean'] = mHCN_d_ocean
 
         return out
 
