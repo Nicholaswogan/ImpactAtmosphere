@@ -37,7 +37,7 @@ class SteamAtm():
         self.k_B = ct.boltzmann*1e7 # boltzman constant (cgs units)
         self.Navo = ct.avogadro*1e-3 # avagadros's number (molecules/mol)
 
-    def impact(self,N_H2O_ocean,N_CO2,N_N2,M_i):
+    def impact(self,N_H2O_ocean,N_CO2,N_N2,M_i,N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0, N_NH3 = 0.0):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid
         impact. The simulation stops when the steam begins to condense.
 
@@ -61,7 +61,7 @@ class SteamAtm():
 
         # P_init = [dynes], N_init = [mol/cm2]
         N_init, P_init, X = \
-        self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i)
+        self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4, N_NH3 )
 
         self.gas.TPX = self.T_prime,P_init*0.1,X
 
@@ -117,6 +117,7 @@ class SteamAtm():
                     'time' : seconds}
         for i,name in enumerate(self.gas.species_names):
             solution[name] = Mix[:,i]
+        solution['N_ocean'] = np.ones(len(seconds))*N_H2O_ocean - N_init[self.gas.species_names.index('H2O')]
         return solution
 
     def init_for_integrate(self,solution):
@@ -132,8 +133,28 @@ class SteamAtm():
         Ninit_dict = self.init_for_integrate(solution)
         out = integrate(Ninit_dict,**kwargs)
         return out
+        
+    def dry_end_atmos(self, sol_stm):
+        Ntot = sol_stm['Ntot'][-1]
+        Ntot_dry = Ntot - Ntot*sol_stm['H2O'][-1]
 
-    def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i):
+        sol_dry = {}
+        sol_dry['Ntot'] = Ntot_dry
+
+        mubar_dry = 0.0
+        for i,sp in enumerate(self.gas.species_names):
+            if sp =='H2O':
+                sol_dry['H2O'] = 0.0
+            else:
+                sol_dry[sp] = sol_stm[sp][-1]*Ntot/Ntot_dry
+                mubar_dry += self.gas.molecular_weights[i]*sol_dry[sp]
+        Psurf_dry = Ntot_dry*mubar_dry*self.grav/1e6
+        sol_dry['Psurf'] = Psurf_dry
+        sol_dry['mubar'] = mubar_dry
+        
+        return sol_dry
+
+    def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i, N_CO_init, N_H2_init, N_CH4_init, N_NH3_init ):
         """Determines the initial conditions for method `impact`.
         """
 
@@ -143,11 +164,13 @@ class SteamAtm():
         N_H2,N_H2O,N_CO,N_CO2 = self.react_iron(N_H2O_steam,N_CO2,M_i)
         # set as initial conditions
         N_init = np.zeros(len(self.gas.species_names))
-        N_init[self.gas.species_names.index('H2')] = N_H2
+        N_init[self.gas.species_names.index('H2')] = N_H2 + N_H2_init
         N_init[self.gas.species_names.index('H2O')] = N_H2O
-        N_init[self.gas.species_names.index('CO')] = N_CO
+        N_init[self.gas.species_names.index('CO')] = N_CO + N_CO_init
         N_init[self.gas.species_names.index('CO2')] = N_CO2
         N_init[self.gas.species_names.index('N2')] = N_N2
+        N_init[self.gas.species_names.index('CH4')] = N_CH4_init
+        N_init[self.gas.species_names.index('NH3')] = N_NH3_init
 
         P_init = np.sum(self.gas.molecular_weights*N_init*self.grav) # (dynes)
         self.gas.TPX = self.T_prime,P_init*0.1,(N_init/np.sum(N_init))
