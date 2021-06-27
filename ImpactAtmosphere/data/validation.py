@@ -10,7 +10,7 @@ equilibrated (chemical equilibrium). This shows the differences
 between the two equilibriums
 '''
 print(validation1)
-gas1 = ct.Solution('zahnle.cti')
+gas1 = ct.Solution('zahnle_earth.cti')
 gas2 = ct.Solution('gri30.cti')
 gas1.TPX = 1000,100000, {'C':1,'O':1,'H':1,'N':1}
 gas2.TPX = 1000,100000, {'C':1,'O':1,'H':1,'N':1}
@@ -32,7 +32,7 @@ and reverse reaction rates of two body reactions to make sure none of them
 are higher than the theoretical maximum limit. See the plot.
 '''
 print(validation2)
-gas = ct.Solution('zahnle.cti')
+gas = ct.Solution('zahnle_earth.cti')
 P = 100000
 T = 300
 gas.TPX = T, P, 'CH4:1.0, O2:0.1, N:1, S:1'

@@ -6,7 +6,7 @@ import re
 # script to manually put in atoms.
 
 thermo_file = 'thermodata120_2-10-2021.rx'
-rx_file = 'titan_205_2-10-2021_modified.rx'
+rx_file = 'earth_125_5-26-2021_modified.rx'
 
 def write_2body(rx,a,b,Ea):
     start = 'reaction( '
@@ -14,7 +14,7 @@ def write_2body(rx,a,b,Ea):
     data = '  ['+'%.6e'%(a*(1/300)**b)+', '+'%.3f'%b+', '+'%.2f'%Ea+'])'
 
     out = ''.join([start,reaction,data])
-    
+
     if any([rrr=="M" for rrr in rx]):
         start = 'three_body_reaction( '
         reaction = '"'+rx[0]+' + '+rx[1]+' <=> '+rx[2]+' + '+rx[3]+'",'
@@ -38,26 +38,26 @@ def write_falloff(rx,a,b,Ea0,d,e,Eainf):
 
         out = ''.join([start,reaction,kf,kf0])
     return out
-    
+
 def return_coefficients(spec):
     fil = open(thermo_file,'r')
     lines = fil.readlines()
     fil.close()
-    
+
     lines1 = []
     for line in lines:
         if line.split()[0] == spec:
             lines1.append(line)
-            
+
     if len(lines)==0:
         raise Exception('species not found')
-    
-    
+
+
     coeff = []
     lb = []
     ub = []
     for line in lines1:
-    
+
         if len(line.split())==4:
             raise Exception('no data')
             pass
@@ -65,8 +65,8 @@ def return_coefficients(spec):
             coeff.append([float(a) for a in line.split()[5:]])
             lb.append(float(line.split()[1])*1000)
             ub.append(float(line.split()[2])*1000)
-    
-            
+
+
     return lb,ub,coeff
 
 
@@ -74,17 +74,17 @@ def return_coefficients_nodata(spec):
     fil = open(thermo_file,'r')
     lines = fil.readlines()
     fil.close()
-    
+
     for line in lines:
         if line.split()[0]==spec:
             data = line
 
     dum, xH_j, xS_j, spec_ref = data.split()
-    
+
     for line in lines:
         if line.split()[0]==spec_ref:
             data = line
-    
+
     dum, dum1,dum,xH_i, xS_i = data.split()[:5]
     xH_i = float(xH_i)
     xS_i = float(xS_i)
@@ -95,7 +95,7 @@ def return_coefficients_nodata(spec):
     deltaS = (xS_j-xS_i)
 
     lb,ub,coeff = return_coefficients(spec_ref)
-    
+
     coeff1 = []
     for co in coeff:
         co1 = co.copy()
@@ -103,8 +103,8 @@ def return_coefficients_nodata(spec):
         co1[6] = co[6] + deltaS
         coeff1.append(co1)
     return lb,ub,coeff1,spec_ref
-    
-    
+
+
 def find_atoms(a):
     bb = re.findall(r'([A-Z][a-z]?)(\d*)', a)
 
@@ -127,7 +127,7 @@ def find_atoms(a):
                         b2[1]='1'
                     bnew = [b1[0],str(int(b1[1])+int(b2[1]))]
 
-        if k==0:  
+        if k==0:
             bbb.append(b1)
         elif k==1 and jjj==0:
             bbb.append(bnew)
@@ -153,9 +153,9 @@ def shomate(Tlow,Thigh,coeff):
            '                    , '+'%.8e'%coeff[5]+', '+'%.8e'%coeff[6]+'] )'
 
 def thermo_entry(spec,lb,ub,coeff,note = '"From the NIST database"'):
-    
+
     atoms = find_atoms(spec)
-    
+
     start = 'species(name = "'+spec+'",\n'+\
         '        atoms = " '+atoms+' ",\n'+\
         '        thermo = (\n'
@@ -166,15 +166,15 @@ def thermo_entry(spec,lb,ub,coeff,note = '"From the NIST database"'):
         else:
             thermo.append(shomate(lb[i],ub[i],coeff[i])+'\n')
 
-        
+
     notes = '                 ),\n        note = '+note
     end = ')\n\n'
 
     entry = [start]+thermo+[notes]+[end]
     return ''.join(entry)
-    
-    
-    
+
+
+
 fil = open(rx_file,'r')
 lines = fil.readlines()
 fil.close()
@@ -183,8 +183,8 @@ for line in lines:
     for sp in line[:36].split():
         if not any([sp==spp for spp in rxspecies]):
             rxspecies.append(sp)
-            
-            
+
+
 fil = open(thermo_file,'r')
 lines = fil.readlines()
 fil.close()
@@ -197,9 +197,9 @@ for line in lines:
     if not any([sp==spp for spp in spec]):
         if any([sp==spp for spp in rxspecies]):
             spec.append(sp)
-            
+
 # print(set(spec).symmetric_difference(set(rxspecies)))
-            
+
 index = spec.index('HCS')
 for i in range(index):
     lb,ub,coeff = return_coefficients(spec[i])
@@ -208,11 +208,11 @@ for i in range(index):
         lb = lb[0:2]
         ub = ub[0:2]
         coeff = coeff[0:2]
-    
+
     if len(lb)>0:
         res = thermo_entry(spec[i],lb,ub,coeff)
         fil.write(res)
-        
+
 # now need to do species without data
 for i in range(index,len(spec)):
 
@@ -221,14 +221,14 @@ for i in range(index,len(spec)):
         lb = lb[0:2]
         ub = ub[0:2]
         coeff = coeff[0:2]
-    
+
     if len(lb)==0:
         sys.exit(spec[i])
     res = thermo_entry(spec[i],lb,ub,coeff,note='"Estimated from thermodynamic data at 298 K and species '+spec_ref+'"')
     fil.write(res)
 
 
-fil.close() 
+fil.close()
 
 
 
@@ -249,38 +249,38 @@ for i,line in enumerate(lines):
         # now we have
         # a, b, Er
         out = write_2body(rx,a,b,Ea)
-        
+
         fil.write('# Reaction '+str(i+1)+'\n')
         fil.write(out+'\n\n')
-        
+
     else:
         # threebody falloff
         Ea0 = c
         Eainf = f
         out = write_falloff(rx,a,b,Ea0,d,e,Eainf)
-        
+
         fil.write('# Reaction '+str(i+1)+'\n')
         fil.write(out+'\n\n')
-        
+
 fil.close()
 
 
 # combine
 
 header = '''# Generated from titan_205.rx, and thermodata120.rx
-# on 4/16/2021. Kevin sent me (Nick Wogan) these data files on 
-# 2/10/2021 in an email. This is Kevin Zahnle's reaction mechanism 
+# on 4/16/2021. Kevin sent me (Nick Wogan) these data files on
+# 2/10/2021 in an email. This is Kevin Zahnle's reaction mechanism
 # designed for atmospheric chemistry.
 
 '''
 
 units = 'units(length="cm", quantity = "molec", act_energy = "K")\n\n'
 
-temp =[] 
+temp =[]
 rxspecies.remove('M')
 
 for i in range(int(len(rxspecies)/10)+1):
-    if i<7:
+    if i<9:
         temp.append(' '.join(rxspecies[10*i:10*i+10])+'\n')
     else:
         temp.append(' '.join(rxspecies[10*i:])+'')
@@ -288,8 +288,8 @@ try:
     temp.remove('')
 except:
     pass
-        
-    
+
+
 species = '                       '.join(temp)
 
 
@@ -302,7 +302,7 @@ ideal_gas = 'ideal_gas(name = "zahnle",\n'+\
 
 
 temp1 = '''#-------------------------------------------------------------------------------
-#  Species data 
+#  Species data
 #-------------------------------------------------------------------------------
 '''
 
@@ -312,7 +312,7 @@ fil.close()
 
 
 temp2 = '''#-------------------------------------------------------------------------------
-#  Reaction data 
+#  Reaction data
 #-------------------------------------------------------------------------------
 '''
 
@@ -324,11 +324,10 @@ fil.close()
 
 together = ''.join([header,units,ideal_gas,temp1,''.join(lines1),temp2,''.join(lines2)])
 
-fil = open('zahnle.cti','w')
+fil = open('zahnle_earth.cti','w')
 fil.write(together)
 fil.close()
 
 import os
 os.remove("thermo_data.txt")
 os.remove("reactions.txt")
-
