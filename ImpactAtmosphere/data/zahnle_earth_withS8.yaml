@@ -12,7 +12,7 @@ phases:
   species: [H, H2, O, OH, H2O, O2, C, CO, CO2, HCO, H2CO, CH, CH2, CH3,
     H2COH, CH4, CH3O, CH3OH, C2, C2H, C2H2, C2H3, C2H4, C2H5, C2H6, C4H,
     C4H2, C2H2OH, CH2CO, CH2CHO, CH3CHO, CH3CO, 1CH2, C2H4OH, C2H3OH, N,
-    N2, NO, NH, NH2, NH3, CN, HCN, HCNOH, H2CN, S, S2, S3, S4,
+    N2, NO, NH, NH2, NH3, CN, HCN, HCNOH, H2CN, S, S2, S3, S4, S8, S8L,
     HS, H2S, SO, SO2, HSO, OCS, CS, CS2, HCS, O1D, HCCO, NCO, HNCO, NH2CO,
     NNH, N2H2, HO2, H2O2, O3, HNO, N2O, NO2, HNO2, HNO3, NO3, SO3, HSO3,
     H2SO4, CH3O2, HS4, C4H3, C4H4, Cl, HCl, Cl2, HOCl, ClO, OClO, N2H4,
@@ -188,6 +188,14 @@ species:
     temperature-ranges: [0.0, 6000.0]
     data:
     - [79.88051, 3.276394, -1.0e-04, 1.0e-05, -1.179851, 107.0, 399.7013]
+  note: From the NIST database
+- name: S8
+  composition: {S: 8}
+  thermo:
+    model: Shomate
+    temperature-ranges: [0.0, 6000.0]
+    data:
+    - [180.6697, 1.918988, -0.52013, 0.044394, -2.270155, 39.45, 635.5496]
   note: From the NIST database
 - name: H2S
   composition: {H: 2, S: 1}
@@ -789,6 +797,14 @@ species:
     - [19.63229, 153.9599, -115.8378, 32.87955, -0.249114, -366.5718, 241.3149]
     - [97.45959, 5.429577, -1.029688, 0.06795, -12.29314, -412.1812, 337.4151]
   note: Estimated from thermodynamic data at 298 K and species HNO3
+- name: S8L
+  composition: {S: 8}
+  thermo:
+    model: Shomate
+    temperature-ranges: [0.0, 6000.0]
+    data:
+    - [180.6697, 1.918988, -0.52013, 0.044394, -2.270155, 73.45, 665.3196]
+  note: Estimated from thermodynamic data at 298 K and species S8
 - name: O1D
   composition: {O: 1}
   thermo:
@@ -1466,6 +1482,17 @@ reactions:
   high-P-rate-constant: {A: 3.0e-11, b: 0.0, Ea: 0.0}
 - equation: S + S4 <=> S2 + S3  # Reaction 244
   rate-constant: {A: 4.0e-11, b: 0.0, Ea: 500.0}
+- equation: S4 + S4 (+ M) <=> S8 (+ M)  # Reaction 245
+  type: falloff
+  low-P-rate-constant: {A: 9.0e-26, b: -2.0, Ea: 0.0}
+  high-P-rate-constant: {A: 1.0e-11, b: 0.0, Ea: 0.0}
+- equation: S4 + S4 (+ M) <=> S8L (+ M)  # Reaction 246
+  type: falloff
+  low-P-rate-constant: {A: 9.0e-25, b: -2.0, Ea: 0.0}
+  high-P-rate-constant: {A: 1.0e-10, b: 0.0, Ea: 0.0}
+- equation: S8L + M <=> S8 + M  # Reaction 247
+  type: three-body
+  rate-constant: {A: 2.0e-11, b: 0.0, Ea: 500.0}
 - equation: S + H (+ M) <=> HS (+ M)  # Reaction 248
   type: falloff
   low-P-rate-constant: {A: 1.0e-32, b: 0.0, Ea: 0.0}
@@ -2105,6 +2132,8 @@ reactions:
   type: falloff
   low-P-rate-constant: {A: 7.0e-30, b: 0.0, Ea: 0.0}
   high-P-rate-constant: {A: 7.0e-11, b: 0.0, Ea: 0.0}
+- equation: H + S8 <=> HS4 + S4  # Reaction 526
+  rate-constant: {A: 3.0e-12, b: 0.0, Ea: 5000.0}
 - equation: H + HS4 <=> H2 + S4  # Reaction 527
   rate-constant: {A: 1.0e-10, b: 0.0, Ea: 1000.0}
 - equation: OH + HS4 <=> H2O + S4  # Reaction 528
@@ -2115,6 +2144,8 @@ reactions:
   rate-constant: {A: 3.0e-11, b: 0.0, Ea: 2500.0}
 - equation: NH2 + HS4 <=> NH3 + S4  # Reaction 531
   rate-constant: {A: 3.0e-11, b: 0.0, Ea: 500.0}
+- equation: HS4 + HS4 <=> H2 + S8  # Reaction 532
+  rate-constant: {A: 3.0e-12, b: 0.0, Ea: 2500.0}
 - equation: S + HS4 <=> HS + S4  # Reaction 533
   rate-constant: {A: 3.0e-11, b: 0.0, Ea: 1000.0}
 - equation: H + C4H2 (+ M) <=> C4H3 (+ M)  # Reaction 534

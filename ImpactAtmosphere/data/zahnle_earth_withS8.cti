@@ -2887,7 +2887,7 @@ reaction( "C2H4OH + OH <=> CH3CHO + H2O",  [3.300000e-11, 0.000, 0.00])
 reaction( "C2H4OH + O <=> CH3CHO + OH",  [1.500000e-10, 0.000, 0.00])
 
 # Reaction 518
-reaction( "CH3CHO + H <=> CH3CO + H2",  [6.600000e-11, 0.000, 2100.00])
+reaction( "CH3CHO + H <=> CH3CO + H2",  [2.142090e-19, 2.580, 615.00])
 
 # Reaction 519
 reaction( "CH3CHO + H <=> CH2CHO + H2",  [1.381873e-20, 3.100, 2620.00])
