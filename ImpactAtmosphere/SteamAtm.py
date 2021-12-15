@@ -62,9 +62,10 @@ class SteamAtm():
         # P_init = [dynes], N_init = [mol/cm2]
         N_init, P_init, X = \
         self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4, N_NH3 )
-
+        return self.cooling_steam_atmosphere(N_H2O_ocean, N_init, P_init, X)
+        
+    def cooling_steam_atmosphere(self, N_H2O_ocean, N_init, P_init, X):
         self.gas.TPX = self.T_prime,P_init*0.1,X
-
         # Keep track of these things
         Temperature = np.array([self.T_prime]) # K
         Column = np.array([np.sum(N_init)]) # mol/cm2
@@ -105,7 +106,7 @@ class SteamAtm():
             Mix = np.append(Mix,[self.gas.X],axis=0)
 
         if not break_flag:
-            sys.exit('Integration failed. Water never started to condense')
+            print('Integration failed. Water never started to condense')
         if self.verbose:
             print("{:<40}".format('Integration successful.'))
 

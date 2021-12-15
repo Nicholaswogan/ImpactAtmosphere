@@ -3,7 +3,7 @@ from scipy.integrate import solve_ivp
 from scipy import constants
 import sys
 
-from EvolveAtmFort import atmos
+from .EvolveAtmFort import atmos
 atmos.setup()
 from .hydrolysis_rates import HCN_hydrolysis_rate, HCONH2_hydrolysis_rate
 from .EvolveAtm import HCN_transport

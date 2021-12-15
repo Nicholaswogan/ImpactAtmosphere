@@ -3,9 +3,9 @@ from scipy.integrate import solve_ivp
 from scipy import constants
 import sys
 
-from EvolveAtmFort import atmos
+from .EvolveAtmFort import atmos
 atmos.setup()
-from EvolveAtmFort import diffusion
+from .EvolveAtmFort import diffusion
 from .hydrolysis_rates import HCN_hydrolysis_rate
 
 
