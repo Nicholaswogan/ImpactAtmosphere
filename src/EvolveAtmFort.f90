@@ -337,7 +337,8 @@ contains
 
     ! input
     double precision, dimension(10), intent(in) :: y
-    double precision, dimension(10) :: N
+    double precision, dimension(10), target :: N
+    double precision, pointer :: N_ptr(:)
     double precision, intent(in) :: t
 
     ! output
@@ -355,21 +356,23 @@ contains
     integer, dimension(lwa) :: wa
 
     do i=1,nspecies
-      N(i) = dmax1(y(i),0.d0)
+      N(i) = max(y(i),0.d0)
     enddo
-
+    N_ptr => N
     NNN = N ! global NNN
     x(1) = dlog(tau_uv_init) ! intial condtions
-
+    
+    print*,'PRINT1: ',N_ptr(1)
     ! solve nonlinear system
     call lmdif2(fcn2,1,1,x,fvec,tol,info,iwa,wa,lwa,10000)
+    print*,'PRINT2: ',N_ptr(1)
     if ((info.ne.1) .and. (info.ne.2) .and. (info.ne.3) .and. (info.ne.4)) then
       print*,'Non-linear solver failed in subroutine rhs ',info
       ierr = .true.
     endif
     tau_uv_init = dexp(x(1))
 
-
+    print*,'PRINT3: ',N_ptr(1)
     call rhs_all(N,dexp(x(1)),dNdt,pressure,T_surf,N_H2O,mu)
 
   end subroutine

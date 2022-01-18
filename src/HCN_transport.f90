@@ -94,8 +94,8 @@ contains
 
     ! tropopause altitude (cm)
     ztrop = -k_boltz/(mubar/N_avo*g)* &
-              (T_trop-TT_surf)*(1.d0/dlog(T_trop/TT_surf)) &
-              *dlog(p_trop/ppressure)
+              (T_trop-TT_surf)*(1.d0/log(T_trop/TT_surf)) &
+              *log(p_trop/ppressure)
 
     ! slope of T(z) from ground to tropopause
     m_slope = ((T_trop-TT_surf)/ztrop)
@@ -123,7 +123,7 @@ contains
       call densty(zm(i),nm(i))
     enddo
     ! water vapor in troposphere
-    ind_trop = minloc(dabs(zm - ztrop), dim=1)-1 ! index of troposphere
+    ind_trop = minloc(abs(zm - ztrop), dim=1)-1 ! index of troposphere
     if (zm(ind_trop)>ztrop) ind_trop = ind_trop-1 ! make it so that ind_trop is just below ztrop
 
     f_H2Om = 0.d0
@@ -161,11 +161,11 @@ contains
     k_star = 0.d0
     do i=1,ind_trop
       lnkH = 8205.7d0/max(Tm(i),273.d0)-25.323d0 ! in M/atm
-      H_HCN = dexp(lnkH)/1.013d0 ! M/bar
+      H_HCN = exp(lnkH)/1.013d0 ! M/bar
       k_bar = (C1*k_boltz*Tm(i)*H_HCN/(1.d0+C1*C2*n_avo*LLL*k_boltz*Tm(i)*H_HCN)) &
                * (WH2O(i)*MH2O/rho_H2O)
-      Q_i = (1.d0-FFF) + (FFF/(gamma*k_bar))*(1.d0 - dexp(-k_bar*gamma))
-      k_star(i) = (1.d0/(gamma*Q_i)) * (1.d0 - dexp(-k_bar*gamma))
+      Q_i = (1.d0-FFF) + (FFF/(gamma*k_bar))*(1.d0 - exp(-k_bar*gamma))
+      k_star(i) = (1.d0/(gamma*Q_i)) * (1.d0 - exp(-k_bar*gamma))
     enddo
     if (.not. rainout_on) then
       k_star = 0.d0 ! turns off rainout
@@ -182,7 +182,7 @@ contains
 
     ! The surface ocean
     lnkH = 8205.7d0/max(Ts,273.d0)-25.323d0 ! in M/atm
-    alpha_HCN = dexp(lnkH)/1.013d0 ! M/bar
+    alpha_HCN = exp(lnkH)/1.013d0 ! M/bar
     AAA(2,1) = vo/zs
     AAA(2,2) = -vp_HCN/zs - ktot - vo/zs
     AAA(2,3) = vp_HCN*alpha_HCN*Ps/zs + k_star(1)*nm(1)*dz/(CC*zs)
@@ -251,11 +251,11 @@ contains
     double precision, intent(in) :: z
     double precision, intent(out) :: PPP
     if (z <= ztrop) then
-      PPP = 1.d6*ppressure*dexp(-mmubar/N_avo*g/k_boltz &
-              *(1.d0/m_slope)*dlog((m_slope*z+TT_surf)/TT_surf))
+      PPP = 1.d6*ppressure*exp(-mmubar/N_avo*g/k_boltz &
+              *(1.d0/m_slope)*log((m_slope*z+TT_surf)/TT_surf))
     elseif (z > ztrop) then
-      PPP = 1.d6*ppressure*dexp(-(mmubar/N_avo*g/k_boltz &
-                    *(1.d0/m_slope)*dlog(T_trop/TT_surf) &
+      PPP = 1.d6*ppressure*exp(-(mmubar/N_avo*g/k_boltz &
+                    *(1.d0/m_slope)*log(T_trop/TT_surf) &
                     +mmubar/N_avo*g/(k_boltz*T_trop)*(z-ztrop)))
     endif
   end subroutine
@@ -277,7 +277,7 @@ contains
     double precision, intent(out) :: pH2O
     double precision :: TTT
     call temper(z,TTT)
-    pH2O = 1.0d6*dexp(5000.0d0/373.0d0-5000.0d0/TTT)
+    pH2O = 1.0d6*exp(5000.0d0/373.0d0-5000.0d0/TTT)
   end subroutine
 
   subroutine f_H2O_saturation(z,fH2O)

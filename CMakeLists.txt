@@ -23,6 +23,9 @@ find_package(LAPACK REQUIRED)
 
 add_subdirectory(src)
 
+add_executable(test src/test.f90)
+target_link_libraries(test impactatmosphere)
+
 # python extension
 set(F2PY_SOURCES 
 ${CMAKE_SOURCE_DIR}/src/EvolveAtmFort.f90 

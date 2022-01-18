@@ -35,12 +35,12 @@ contains
 
     ! tropopause altitude (cm)
     ztrop = -k_boltz/(mubar/N_avo*grav)* &
-            (T_trop-T_surf)*(1.d0/dlog(T_trop/T_surf)) &
-            *dlog(P_trop/P_surf)
+            (T_trop-T_surf)*(1.d0/log(T_trop/T_surf)) &
+            *log(P_trop/P_surf)
             
     m_slope = ((T_trop-T_surf)/ztrop)
     
-    z_top = ztrop + (dlog(P_top/P_surf) + mubar* grav/(N_avo*k_boltz*m_slope)*dlog(T_trop/T_surf)) &
+    z_top = ztrop + (log(P_top/P_surf) + mubar* grav/(N_avo*k_boltz*m_slope)*log(T_trop/T_surf)) &
           *(-N_avo*k_boltz*T_trop)/(mubar*grav)
           
     ! compute z
@@ -101,8 +101,8 @@ contains
       return
     endif
              
-    call alt_trop(P_trop, P_surf, mubar, grav, ztrop)
-    call alt_above_trop(P_top, P_trop, T_trop, ztrop, mubar, grav, z_top)
+    ztrop = alt_trop(P_trop, P_surf, mubar, grav)
+    z_top = alt_above_trop(P_top, P_trop, T_trop, ztrop, mubar, grav)
     
     ! compute z
     dz = z_top/nz
@@ -126,7 +126,7 @@ contains
           return 
         endif
         ! now compute T
-        log10P = dlog10(x(1))
+        log10P = log10(x(1))
         Tout(i) = poly(1) + poly(2)*log10P +  &
                   poly(3)*log10P**2.d0 + poly(4)*log10P**3.d0
         ! pressure
@@ -163,27 +163,27 @@ contains
   end subroutine
   
   ! compute z for a given P in troposphere
-  subroutine alt_trop(P, P_surf, mubar, grav, z)
+  pure function alt_trop(P, P_surf, mubar, grav) result(z)
     real(real_kind), intent(in) :: P, P_surf, mubar, grav
-    real(real_kind), intent(out) :: z
+    real(real_kind) :: z
     
     real(real_kind) :: term1, term2
     
-    term1 = -(poly(1)*dlog(P) + poly(2)*dlog(P)**2/dlog(100.d0) + &
-              poly(3)*dlog(P)**3/(3.d0*dlog(10.d0)**2) + &
-              poly(4)*dlog(P)**4/(4.d0*dlog(10.d0)**3))
-    term2 = poly(1)*dlog(P_surf) + poly(2)*dlog(P_surf)**2/dlog(100.d0) + &
-            poly(3)*dlog(P_surf)**3/(3.d0*dlog(10.d0)**2) + &
-            poly(4)*dlog(P_surf)**4/(4.d0*dlog(10.d0)**3)
+    term1 = -(poly(1)*log(P) + poly(2)*log(P)**2/log(100.d0) + &
+              poly(3)*log(P)**3/(3.d0*log(10.d0)**2) + &
+              poly(4)*log(P)**4/(4.d0*log(10.d0)**3))
+    term2 = poly(1)*log(P_surf) + poly(2)*log(P_surf)**2/log(100.d0) + &
+            poly(3)*log(P_surf)**3/(3.d0*log(10.d0)**2) + &
+            poly(4)*log(P_surf)**4/(4.d0*log(10.d0)**3)
     z = (term1+term2)*k_boltz*n_avo/(mubar*grav)
-  end subroutine
+  end function
   
   ! compute z for a given P above tropopause (isothermal)
-  subroutine alt_above_trop(P, P_trop, T_trop, ztrop, mubar, grav, z)
+  pure function alt_above_trop(P, P_trop, T_trop, ztrop, mubar, grav) result(z)
     real(real_kind), intent(in) :: P, P_trop, T_trop, ztrop, mubar, grav
-    real(real_kind), intent(out) :: z
-    z = dlog(P/P_trop)*(-k_boltz*n_avo*T_trop)/(mubar*grav) + ztrop
-  end subroutine
+    real(real_kind)  :: z
+    z = log(P/P_trop)*(-k_boltz*n_avo*T_trop)/(mubar*grav) + ztrop
+  end function
   
   ! compute P for a given z above tropopause (isothermal)
   subroutine P_above_trop(z, P_trop, T_trop, ztrop, mubar, grav, P)
@@ -200,12 +200,12 @@ contains
     integer, intent(inout) :: iflag
     real(real_kind) :: P, term1, term2, term3
     P = x(1)
-    term1 = -(poly(1)*dlog(P) + poly(2)*dlog(P)**2/dlog(100.d0) + &
-              poly(3)*dlog(P)**3/(3.d0*dlog(10.d0)**2) + &
-              poly(4)*dlog(P)**4/(4.d0*dlog(10.d0)**3))
-    term2 = poly(1)*dlog(P_surf_g) + poly(2)*dlog(P_surf_g)**2/dlog(100.d0) + &
-            poly(3)*dlog(P_surf_g)**3/(3.d0*dlog(10.d0)**2) + &
-            poly(4)*dlog(P_surf_g)**4/(4.d0*dlog(10.d0)**3)
+    term1 = -(poly(1)*log(P) + poly(2)*log(P)**2/log(100.d0) + &
+              poly(3)*log(P)**3/(3.d0*log(10.d0)**2) + &
+              poly(4)*log(P)**4/(4.d0*log(10.d0)**3))
+    term2 = poly(1)*log(P_surf_g) + poly(2)*log(P_surf_g)**2/log(100.d0) + &
+            poly(3)*log(P_surf_g)**3/(3.d0*log(10.d0)**2) + &
+            poly(4)*log(P_surf_g)**4/(4.d0*log(10.d0)**3)
     term3 = -(mubar_g*grav_g*z_g)/(k_boltz*n_avo)
     fvec(1) = term1+term2+term3
   end subroutine

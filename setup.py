@@ -11,7 +11,7 @@ setup(
     python_requires='>=3.6',
     version="4.2.2",
     license="MIT",
-    install_requires=['numpy>=1.21','scipy'],
+    install_requires=['numpy','scipy'],
     author='Nicholas Wogan',
     author_email = 'nicholaswogan@gmail.com',
     long_description=long_description,
