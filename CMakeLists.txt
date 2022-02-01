@@ -46,9 +46,9 @@ message(STATUS "F2PY included from: ${F2PY_INCLUDE_DIR}")
 set(f2py_module_name "EvolveAtmFort")
 set(generated_module_file ${f2py_module_name}${PYTHON_EXTENSION_MODULE_SUFFIX})
   
-  add_custom_target(${f2py_module_name} ALL
-  DEPENDS ${F2PY_SOURCES}
-  )
+add_custom_target(${f2py_module_name} ALL
+DEPENDS ${F2PY_SOURCES}
+)
   
 add_custom_command(
 OUTPUT "${f2py_module_name}module.c" "${f2py_module_name}-f2pywrappers2.f90"

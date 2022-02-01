@@ -75,7 +75,7 @@ contains
     integer info
     integer, dimension(nn) :: iwa
     integer, parameter :: lwa = 54
-    integer, dimension(lwa) :: wa
+    double precision, dimension(lwa) :: wa
     ! other
     double precision :: p_H2O, mubar, p_dry, p_H2O_trop
     double precision :: fraction, NX, N_H2O_strat, N_strat, NH2Ox
@@ -338,7 +338,6 @@ contains
     ! input
     double precision, dimension(10), intent(in) :: y
     double precision, dimension(10), target :: N
-    double precision, pointer :: N_ptr(:)
     double precision, intent(in) :: t
 
     ! output
@@ -353,26 +352,22 @@ contains
     integer info
     integer, dimension(1) :: iwa
     integer, parameter :: lwa = 10
-    integer, dimension(lwa) :: wa
+    double precision, dimension(lwa) :: wa
 
     do i=1,nspecies
       N(i) = max(y(i),0.d0)
     enddo
-    N_ptr => N
     NNN = N ! global NNN
     x(1) = dlog(tau_uv_init) ! intial condtions
     
-    print*,'PRINT1: ',N_ptr(1)
     ! solve nonlinear system
     call lmdif2(fcn2,1,1,x,fvec,tol,info,iwa,wa,lwa,10000)
-    print*,'PRINT2: ',N_ptr(1)
     if ((info.ne.1) .and. (info.ne.2) .and. (info.ne.3) .and. (info.ne.4)) then
       print*,'Non-linear solver failed in subroutine rhs ',info
       ierr = .true.
     endif
     tau_uv_init = dexp(x(1))
-
-    print*,'PRINT3: ',N_ptr(1)
+    
     call rhs_all(N,dexp(x(1)),dNdt,pressure,T_surf,N_H2O,mu)
 
   end subroutine
@@ -397,7 +392,7 @@ contains
     integer info
     integer, dimension(1) :: iwa
     integer, parameter :: lwa = 10
-    integer, dimension(lwa) :: wa
+    double precision, dimension(lwa) :: wa
 
     do i=1,nspecies
       N(i) = dmax1(y(i),0.d0)
