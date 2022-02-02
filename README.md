@@ -4,18 +4,21 @@ This package contains models of atmospheric evolution after large asteroid impac
 This repository builds upon [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c) (see the original [source code here](https://zenodo.org/record/3698264#.YCHAqndKhuU)).
 
 # Installation
-**Requirements**:<br>
-To install ImpactAtmosphere, you must have the following installed on your system
-- `Python` (>3.6.0) with the `numpy` and `cantera` packages. Install `cantera` using conda: `conda install --channel cantera cantera`, or follow [this guide](https://cantera.org/install/index.html).
-- The GNU compiler collection, version >4.9.4 (includes `gfortran`, `gcc`, etc.). If you are using a Mac, I suggest installing it with Homebrew: `brew install gcc`. For other operating systems [follow this GNU installation guide](https://gcc.gnu.org/install/binaries.html).
 
+You need the GNU compiler collection, version >4.9.4 (includes `gfortran`, `gcc`, etc.). If you are using a Mac, I suggest installing it with Homebrew: `brew install gcc`. For other operating systems [follow this GNU installation guide](https://gcc.gnu.org/install/binaries.html).
 
- **Install**:<br>
-After satisfying the requirements, you can install `ImpactAtmosphere` with the pip from this github repository:
+Next, make a conda environment with the following command
 
-`python -m pip install git+git://github.com/Nicholaswogan/ImpactAtmosphere.git`
+```sh
+conda create -n impacts -c cantera -c conda-forge python numpy scipy pyyaml cantera scikit-build cmake ninja matplotlib
+```
 
+Activate the environment, navigate to the root directory of this repository and install with
 
+```sh
+conda activate impacts
+python setup.py install
+```
 
 <!-- # Updates
 This code builds up on [Zahnle et al. (2020)](https://iopscience.iop.org/article/10.3847/PSJ/ab7e2c) ([source code here](https://zenodo.org/record/3698264#.YCHAqndKhuU)). Here are the similarities and differences.

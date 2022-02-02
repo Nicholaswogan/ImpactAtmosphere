@@ -1,7 +1,7 @@
 import numpy as np
 # import numba as nb
 from scipy.optimize import root
-from photochem.utils import _format as fmt
+from ._format import FormatSettings_main, yaml, MyDumper, Loader
 
 # @nb.njit
 def pahlevan_poly(P):
@@ -185,7 +185,7 @@ def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0):
     fH2O_surf = PH2O_surf/P0
 
     fil = open(infile,'r')
-    data = fmt.yaml.load(fil,Loader=fmt.Loader)
+    data = yaml.load(fil,Loader=Loader)
     fil.close()
 
     data['atmosphere-grid']['bottom'] = 0.0
@@ -207,10 +207,10 @@ def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0):
     else:
         raise Exception("!!!")
         
-    data = fmt.FormatSettings_main(data)
+    data = FormatSettings_main(data)
 
     fil = open(outfile,'w')
-    fmt.yaml.dump(data,fil,Dumper=fmt.MyDumper,sort_keys=False,width=70)
+    yaml.dump(data,fil,Dumper=MyDumper,sort_keys=False,width=70)
     fil.close()
     
 def output2photochem(stm, sol, settings_in, settings_out, atmosphere_out, eddy, ztop, nz = 200, top = 500e5):

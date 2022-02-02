@@ -18,9 +18,6 @@ if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU"
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -Wunused")
 endif()
 
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-
 add_subdirectory(src)
 
 add_executable(test src/test.f90)
