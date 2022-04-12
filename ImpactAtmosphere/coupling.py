@@ -163,7 +163,7 @@ def make_water_profile(stm, sol, nz = 200, ztop = 500e5, mass = 5.972e27, radius
     
     return z, T, P, usol, P0, PH2O_surf
     
-def make_atmosphere_txt(z, T, usol, eddy, species_names, filename="atmosphere.txt"):
+def make_atmosphere_txt(z, T, usol, eddy, species_names, filename="atmosphere.txt", zero_out = []):
     fil = open(filename,'w')
     fil.write('{:25}'.format('alt'))
     fil.write('{:25}'.format('temp'))
@@ -176,12 +176,15 @@ def make_atmosphere_txt(z, T, usol, eddy, species_names, filename="atmosphere.tx
         fil.write('{:25}'.format('%.15e'%T[j]))
         fil.write('{:25}'.format('%.15e'%eddy))
         for i,sp in enumerate(species_names):
-            fil.write('{:25}'.format('%.15e'%usol[i,j]))
+            if sp in zero_out:
+                fil.write('{:25}'.format('%.15e'%0.0))
+            else:
+                fil.write('{:25}'.format('%.15e'%usol[i,j]))
         fil.write('\n')
     fil.close()
     
     
-def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0):
+def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0, z, P, rainfall_rate = 1):
     fH2O_surf = PH2O_surf/P0
 
     fil = open(infile,'r')
@@ -193,7 +196,15 @@ def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0):
     data['atmosphere-grid']['number-of-layers'] = int(nz)
 
     data['planet']['surface-pressure'] = float(P0/1e6)
-
+    
+    if rainfall_rate > 0:
+        data['planet']['water']['gas-rainout'] = True
+        data['planet']['water']['rainfall-rate'] = rainfall_rate
+        ind = np.argmin(np.abs(P - 0.21e6))
+        data['planet']['water']['tropopause-altitude'] = float(z[ind])
+    else:
+        data['planet']['water']['gas-rainout'] = False    
+    
     nn = len(data['boundary-conditions'])
     found = False
     for i in range(nn):
@@ -213,10 +224,10 @@ def make_settings(infile, outfile, ztop, nz, PH2O_surf, P0):
     yaml.dump(data,fil,Dumper=MyDumper,sort_keys=False,width=70)
     fil.close()
     
-def output2photochem(stm, sol, settings_in, settings_out, atmosphere_out, eddy, ztop, nz = 200, top = 500e5):
+def output2photochem(stm, sol, settings_in, settings_out, atmosphere_out, eddy, ztop, nz = 200, top = 500e5, zero_out=[], **kwargs):
     z, T, P, usol, P0, PH2O_surf = make_water_profile(stm, sol, ztop = top)
-    make_atmosphere_txt(z, T, usol, eddy, stm.gas.species_names, filename=atmosphere_out)
-    make_settings(settings_in, settings_out, ztop, nz, PH2O_surf, P0)
+    make_atmosphere_txt(z, T, usol, eddy, stm.gas.species_names, filename=atmosphere_out, zero_out=zero_out)
+    make_settings(settings_in, settings_out, ztop, nz, PH2O_surf, P0, z, P, **kwargs)
     
     
     
