@@ -7,13 +7,21 @@ from .EvolveAtm import integrate
 
 class SteamAtm():
 
-    def __init__(self,gas,T_prime = 2000, impactor_energy_frac = 0.5, \
-        Fe_react_frac = 1, Fe_frac_atmos = 1, impactor_Fe_frac = 0.33, v_i = 17e5 ):
+    def __init__(self,gas, T_prime = 2000, impactor_energy_frac = 0.5, \
+        Fe_react_frac = 1, Fe_frac_atmos = 1, impactor_Fe_frac = 0.33, v_i = 17e5, 
+        Ni_area = 1.0):
 
+        self.surface_catalyst = False
         if type(gas) == str:
             zahnle_path = os.path.dirname(os.path.realpath(__file__))+'/data/'
             ct.add_directory(zahnle_path)
-            self.gas = ct.Solution(gas)
+            if gas == "Methanation_Ni.yaml":
+                # we have a surface catalyst
+                self.surface_catalyst = True
+                self.surf_phase = ct.Interface('Methanation_Ni.yaml','Ni-surface')
+                self.gas = self.surf_phase.adjacent["gas"]
+            else:
+                self.gas = ct.Solution(gas)
         else:
             self.gas = gas # cantera gas object
         self.gas.basis = 'mass'
@@ -25,6 +33,8 @@ class SteamAtm():
         self.Fe_frac_atmos = Fe_frac_atmos
         self.impactor_Fe_frac = impactor_Fe_frac # Fe mass fraction of the impactor.
         self.v_i = v_i # velocity of impactor (cm/s)
+        if self.surface_catalyst:
+            self.Ni_area = Ni_area # cm^2 Ni surface / cm^2 column of the atmosphere
 
         # Settings
         self.rtol = 1e-12 # relative tolerance for CVODES integrator
@@ -38,7 +48,7 @@ class SteamAtm():
         self.k_B = ct.boltzmann*1e7 # boltzman constant (cgs units)
         self.Navo = ct.avogadro*1e-3 # avagadros's number (molecules/mol)
 
-    def impact(self,N_H2O_ocean,N_CO2,N_N2,M_i,N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0, N_NH3 = 0.0):
+    def impact(self,N_H2O_ocean,N_CO2,N_N2,M_i,N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid
         impact. The simulation stops when the steam begins to condense.
 
@@ -62,7 +72,7 @@ class SteamAtm():
 
         # P_init = [dynes], N_init = [mol/cm2]
         N_init, P_init, X = \
-        self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4, N_NH3 )
+        self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         return self.cooling_steam_atmosphere(N_H2O_ocean, N_init, P_init, X)
         
     def cooling_steam_atmosphere(self, N_H2O_ocean, N_init, P_init, X):
@@ -79,10 +89,10 @@ class SteamAtm():
             if self.verbose:
                 print('Atmospheric Temperature = '+"{:<8}".format('%.1f'%Temperature[-1]+' K'),end='\r')
             # compute the timestep
-            dtime, break_flag = self.dtime_dTemp(Temperature[-1], \
-                                P_init, \
-                                mubar[-1], \
-                                Mix[-1,self.gas.species_names.index('H2O')]*P_init)
+            dtime, Hscale, break_flag = self.dtime_dTemp(Temperature[-1], \
+                                        P_init, \
+                                        mubar[-1], \
+                                        Mix[-1,self.gas.species_names.index('H2O')]*P_init)
 
             if break_flag:
                 break
@@ -90,9 +100,24 @@ class SteamAtm():
             # advance to dtime using cantera
             self.gas.TPX = Temperature[-1],P_init*.1,Mix[-1]
             r = ct.ConstPressureReactor(self.gas,energy='off') # no T change during reaction
+            if self.surface_catalyst:
+                self.surf_phase.TPX = Temperature[-1],P_init*.1,{'Ni':1}
+                # advance material surface for 10 seconds while keeping
+                # gas phase fixed. This makes the material properties
+                # realistic and consistent with the gas
+                self.surf_phase.advance_coverages(10,max_steps=1e7,rtol=self.rtol,atol=self.atol)
+                # volume of a 1 cm2 column of the atmosphere. I multiply scale height
+                # by 1.0 cm2
+                volume_column = Hscale*1.0
+                r.volume = volume_column/1e6 # convert to m3
+                Ni_area_SI = self.Ni_area/1e2 # conver to m2
+                # Make the catalytic nickel surface part of the reactor network
+                rs = ct.ReactorSurface(kin=self.surf_phase, r=r, A=Ni_area_SI)
+
             reactorNetwork = ct.ReactorNet([r])
             reactorNetwork.rtol = self.rtol
             reactorNetwork.atol = self.atol
+            reactorNetwork.max_steps = 1000000
             t = 0.0
             while(t < dtime):
                 t = reactorNetwork.step()
@@ -156,7 +181,7 @@ class SteamAtm():
         
         return sol_dry
 
-    def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i, N_CO_init, N_H2_init, N_CH4_init, N_NH3_init ):
+    def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i, N_CO_init, N_H2_init, N_CH4_init):
         """Determines the initial conditions for method `impact`.
         """
 
@@ -172,7 +197,6 @@ class SteamAtm():
         N_init[self.gas.species_names.index('CO2')] = N_CO2
         N_init[self.gas.species_names.index('N2')] = N_N2
         N_init[self.gas.species_names.index('CH4')] = N_CH4_init
-        N_init[self.gas.species_names.index('NH3')] = N_NH3_init
 
         P_init = np.sum(self.gas.molecular_weights*N_init*self.grav) # (dynes)
         self.gas.TPX = self.T_prime,P_init*0.1,(N_init/np.sum(N_init))
@@ -230,7 +254,7 @@ class SteamAtm():
         else:
             break_flag = False
 
-        return dtime, break_flag
+        return dtime, Hscale, break_flag
 
     def steam_from_impact(self,N_H2O_ocean, N_CO2, N_N2, m_i):
         """Calculates the amount of steam heated to self.T_prime by an impactor
@@ -319,11 +343,30 @@ class SteamAtm():
             sys.exit('More Fe than O!')
         return N_H2, N_H2O, N_CO, N_CO2
 
-    def diameter(self,mm): # in g
-        m = mm/1e3 # to kg
-        rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
-        return 2*((3/(4*np.pi))*m/rho)**(1/3) # km
+    def make_equilibrium_solution(self, sol):
+        out = {'time' : sol['time']}
+        for key in self.gas.species_names:
+            out[key] = np.empty(len(sol['time']))
 
-    def mass(self,D): #km
-        rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
-        return rho*(4/3)*np.pi*(D/2)**3*1e3 # mass in g
+        for i in range(len(sol['time'])):
+            T = sol['Tsurf'][i]
+            P = sol['Psurf']*1e5 # Pa
+            X = {}
+            for key in sol.keys():
+                if key in self.gas.species_names:
+                    X[key] = sol[key][i]
+            self.gas.TPX = T,P,X
+            self.gas.equilibrate("TP")
+            
+            for j,key in enumerate(self.gas.species_names):
+                out[key][i] = self.gas.X[j]
+        return out
+
+def mass_to_diameter(mm): # in g
+    m = mm/1e3 # to kg
+    rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
+    return 2*((3/(4*np.pi))*m/rho)**(1/3) # km
+
+def diameter_to_mass(D): #km
+    rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
+    return rho*(4/3)*np.pi*(D/2)**3*1e3 # mass in g

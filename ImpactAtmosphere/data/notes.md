@@ -38,3 +38,7 @@ C2H4    CH3     C3H6    H               6.9e-12   0.0    5600.    0.0       0.0 
 # 9/7/21
 
 I made two versions of `zahnle_earth.yaml`. One version has S8 and S8L and the other does not. S8 and S8L are very fast species which cause integration problems. Default is no S8.
+
+# 9/22/22
+
+I have added the mechanism "Methanation_Ni.yaml", which is from this paper: https://pubs.acs.org/doi/10.1021/acs.iecr.1c00389 . It describes CO and CO2 conversion to CH4 via Ni catalysts.

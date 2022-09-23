@@ -1,0 +1,337 @@
+description: |-
+  SURFACE MECHANISM FOR METHANATION OF CO AND CO2 OVER NICKEL
+  ***********************************************************************
+  ****                                                                  *
+  ****     METHANATION OVER NI - SURFACE MECHANISM                      *
+  ****     thermodynamically consistent (300 - 2000K)                   *
+  ****                                                                  *
+  ****     D. SCHMIDER, L. MAIER, O. DEUTSCHMANN                        *
+  ****     KIT (Karlsruhe Institute of Technology)                      *
+  ****                                                                  *
+  ****     References:                                                  *
+  ****     D. Schmider, L. Maier, O. Deutschmann. Industrial &          *
+  ****     Engineering Chemistry Research (2021).                       *
+  ****     www.detchem.com/mechanisms                                   *
+  ****     KIT (Karlsruhe Institute of Technology)                      *
+  ****     Contact: mail@detchem.com (O. Deutschmann)                    *
+  ****                                                                  *
+  ****                                                                  *
+  ****     Kinetic data:                                                *
+  ****      k = A * T**b * exp (-Ea/RT) * exp(eps*theta/RT)             *
+  ****                                                                  *
+  ****           A          b       Ea        eps                       *
+  ****        (cm,mol,s)    -     kJ/mol     kJ/mol                     *
+  ****                                                                  *
+  ****     STICK: A in next reaction is initial sticking coefficient    *
+  ****                                                                  *
+  ****                                                                  *
+  ****                                                                  *
+  ****                                                                  *
+  ***********************************************************************
+
+units: {length: cm, time: s, quantity: mol, activation-energy: kJ/mol}
+
+phases:
+- name: gas
+  thermo: ideal-gas
+  elements: [N, O, Ar, H, C]
+  species: [CH4, O2, CO, CO2, H2, H2O, AR, N2]
+  state: {T: 900.0, P: 1 atm}
+- name: Ni-surface
+  thermo: ideal-surface
+  adjacent-phases: [gas]
+  elements: [Ni, H, O, C]
+  species: [H-Ni, O-Ni, CH4-Ni, Ni, H2O-Ni, 
+    CO2-Ni, CO-Ni, OH-Ni, C-Ni, HCO-Ni, CH3-Ni, CH2-Ni, CH-Ni, COOH-Ni]
+  kinetics: surface
+  reactions: declared-species
+  state:
+    T: 900.0
+  site-density: 2.6e-5 mol/m^2 # intrinsic property of Ni
+
+species:
+- name: CH4
+  composition: {C: 1, H: 4}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [0.77874148, 0.017476683, -2.783409e-05, 3.049708e-08, -1.2239307e-11,
+      -9825.2285, 13.722195]
+    - [1.6834788, 0.010237236, -3.8751286e-06, 6.7855849e-10, -4.5034231e-14,
+      -1.0080787e+04, 9.623395]
+- name: O2
+  composition: {O: 2}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [3.7837135, -3.0233634e-03, 9.9492751e-06, -9.8189101e-09, 3.3031825e-12,
+      -1063.8107, 3.6416345]
+    - [3.6122139, 7.4853166e-04, -1.9820647e-07, 3.3749008e-11, -2.3907374e-15,
+      -1197.8151, 3.6703307]
+- name: CO
+  composition: {C: 1, O: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [3.2624517, 1.5119409e-03, -3.8817552e-06, 5.5819442e-09, -2.4749512e-12,
+      -1.4310539e+04, 4.848897]
+    - [3.0250781, 1.4426885e-03, -5.6308278e-07, 1.0185813e-10, -6.9109516e-15,
+      -1.426835e+04, 6.1082177]
+- name: CO2
+  composition: {C: 1, O: 2}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [2.2757246, 9.9220723e-03, -1.0409113e-05, 6.8666868e-09, -2.1172801e-12,
+      -4.8373141e+04, 10.188488]
+    - [4.4536228, 3.1401687e-03, -1.2784105e-06, 2.3939967e-10, -1.6690332e-14,
+      -4.8966961e+04, -0.95539588]
+- name: H2
+  composition: {H: 2}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [3.3553514, 5.0136144e-04, -2.3006908e-07, -4.7905324e-10, 4.8522585e-13,
+      -1019.1626, -3.5477228]
+    - [3.0667095, 5.7473755e-04, 1.3938319e-08, -2.5483518e-11, 2.9098574e-15,
+      -865.47412, -1.7798424]
+- name: H2O
+  composition: {H: 2, O: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [4.1677234, -1.811497e-03, 5.9471288e-06, -4.8692021e-09, 1.5291991e-12,
+      -3.0289969e+04, -0.73135474]
+    - [2.6110472, 3.156313e-03, -9.2985438e-07, 1.3331538e-10, -7.4689351e-15,
+      -2.9868167e+04, 7.2091268]
+- name: AR
+  composition: {Ar: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [2.5, 0.0, 0.0, 0.0, 0.0, -745.37498, 4.3660006]
+    - [2.5, 0.0, 0.0, 0.0, 0.0, -745.37502, 4.3660006]
+- name: N2
+  composition: {N: 2}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 1000.0, 5000.0]
+    data:
+    - [3.7044177, -1.4218753e-03, 2.8670392e-06, -1.2028885e-09, -1.3954677e-14,
+      -1064.0795, 2.2336285]
+    - [2.8532899, 1.6022128e-03, -6.2936893e-07, 1.1441022e-10, -7.8057465e-15,
+      -890.08093, 6.3964897]
+- name: H-Ni
+  composition: {H: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [1.3852235, -3.6029151e-05, 1.0148288e-06, -6.3923405e-10, 1.2606464e-13,
+      -5458.8657, -5.042629]
+- name: O-Ni
+  composition: {O: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [0.93388577, 1.4928749e-03, -1.5115381e-06, 7.6013345e-10, -1.4249939e-13,
+      -2.8801188e+04, -3.472475]
+- name: CH4-Ni
+  composition: {C: 1, H: 4, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [0.34765146, 9.9227736e-03, -2.0174749e-06, -1.0640458e-09, 4.1875938e-13,
+      -1.3899727e+04, -4.6164625]
+- name: Ni
+  composition: {Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [300.0, 3000.0]
+    data:
+    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+- name: H2O-Ni
+  composition: {H: 2, O: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [3.5042138, 6.6859484e-04, 1.7626874e-06, -1.1703015e-09, 2.2618536e-13,
+      -3.7912917e+04, -10.558253]
+- name: CO2-Ni
+  composition: {C: 1, O: 2, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [2.1578208, 8.857981e-03, -7.3329557e-06, 3.0145547e-09, -4.8361741e-13,
+      -5.1721137e+04, -0.3967782]
+- name: CO-Ni
+  composition: {C: 1, O: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [1.049584, 5.3782555e-03, -3.5189591e-06, 1.0632343e-09, -1.1268924e-13,
+      -2.7374439e+04, 7.6055902]
+- name: OH-Ni
+  composition: {H: 1, O: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [2.089055, 1.714439e-03, -4.2783855e-07, 9.1121141e-12, 1.1376037e-14,
+      -2.673343e+04, -3.8613884]
+- name: C-Ni
+  composition: {C: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [-3.4933091, 5.2352469e-03, -3.0330892e-06, 6.5561104e-10, -1.4096655e-14,
+      -2231.2473, 7.6842124]
+- name: HCO-Ni
+  composition: {C: 1, H: 1, O: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [1.4205486, 6.418986e-03, -3.2561122e-06, 6.6040647e-10, -1.259588e-14,
+      -1.7229959e+04, -1.3406041]
+- name: CH3-Ni
+  composition: {C: 1, H: 3, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [-0.6107606, 8.6161251e-03, -2.1771493e-06, -6.6381529e-10, 3.1381932e-13,
+      -8897.9208, -2.008287]
+- name: CH2-Ni
+  composition: {C: 1, H: 2, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [-1.5691759, 7.3094888e-03, -2.33684e-06, -2.6357539e-10, 2.0887732e-13,
+      1943.075, 4.4426598]
+- name: CH-Ni
+  composition: {C: 1, H: 1, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [500.0, 2000.0]
+    data:
+    - [-2.5276235, 6.002974e-03, -2.4966946e-06, 1.367587e-10, 1.039158e-13,
+      9566.8107, 7.4401015]
+- name: COOH-Ni
+  composition: {C: 1, H: 1, O: 2, Ni: 1}
+  thermo:
+    model: NASA7
+    temperature-ranges: [200.0, 2000.0]
+    data:
+    - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+reactions:
+- equation: H2 + Ni + Ni => H-Ni + H-Ni  # Reaction 1
+  sticking-coefficient: {A: 0.0145, b: 0, Ea: 0}
+- equation: H-Ni + H-Ni => Ni + Ni + H2  # Reaction 2
+  rate-constant: {A: 4.538e+21, b: -0.138, Ea: 96.108}
+- equation: CH4 + Ni => CH4-Ni  # Reaction 3
+  sticking-coefficient: {A: 0.01064, b: 0.0, Ea: 0.0}
+- equation: CH4-Ni => Ni + CH4  # Reaction 4
+  rate-constant: {A: 2.793e+15, b: 0.085, Ea: 36.977}
+- equation: H2O + Ni => H2O-Ni  # Reaction 5
+  sticking-coefficient: {A: 0.1163, b: 0.0, Ea: 0.0}
+- equation: H2O-Ni => Ni + H2O  # Reaction 6
+  rate-constant: {A: 2.035e+12, b: -0.031, Ea: 61.038}
+- equation: CO2 + Ni => CO2-Ni  # Reaction 7
+  sticking-coefficient: {A: 6.288e-05, b: 0.0, Ea: 0.0}
+- equation: CO2-Ni => Ni + CO2  # Reaction 8
+  rate-constant: {A: 4.993e+07, b: 0.018, Ea: 25.831}
+- equation: CO + Ni => CO-Ni  # Reaction 9
+  sticking-coefficient: {A: 0.3737, b: 0.0, Ea: 0.0}
+- equation: CO-Ni => Ni + CO  # Reaction 10
+  rate-constant: {A: 1.144e+12, b: -0.103, Ea: 111.992}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: CO2-Ni + Ni => O-Ni + CO-Ni  # Reaction 11
+  rate-constant: {A: 1.601e+23, b: -1.001, Ea: 89.324}
+- equation: O-Ni + CO-Ni => CO2-Ni + Ni  # Reaction 12
+  rate-constant: {A: 5.806e+19, b: 0.0, Ea: 123.596}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: CO-Ni + Ni => C-Ni + O-Ni  # Reaction 13
+  rate-constant: {A: 2.355e+14, b: 0.0, Ea: 116.163}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: C-Ni + O-Ni => CO-Ni + Ni  # Reaction 14
+  rate-constant: {A: 2.541e+18, b: 0.0, Ea: 148.077}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CO-Ni + H-Ni => C-Ni + OH-Ni  # Reaction 15
+  rate-constant: {A: 3.045e+18, b: -0.223, Ea: 105.272}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: C-Ni + OH-Ni => CO-Ni + H-Ni  # Reaction 16
+  rate-constant: {A: 2.184e+18, b: 0.128, Ea: 62.778}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CO-Ni + H-Ni => HCO-Ni + Ni  # Reaction 17
+  rate-constant: {A: 6.823e+21, b: -0.979, Ea: 132.079}
+- equation: HCO-Ni + Ni => CO-Ni + H-Ni  # Reaction 18
+  rate-constant: {A: 2.179e+20, b: -0.021, Ea: 0.151}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: 50.000}}
+- equation: HCO-Ni + Ni => CH-Ni + O-Ni  # Reaction 19
+  rate-constant: {A: 5.104e+15, b: 0.023, Ea: 81.719}
+- equation: CH-Ni + O-Ni => HCO-Ni + Ni  # Reaction 20
+  rate-constant: {A: 3.421e+19, b: -0.023, Ea: 110.161}
+- equation: C-Ni + H-Ni => CH-Ni + Ni  # Reaction 21
+  rate-constant: {A: 1.327e+24, b: -0.456, Ea: 157.655}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CH-Ni + Ni => C-Ni + H-Ni  # Reaction 22
+  rate-constant: {A: 2.633e+22, b: 0.456, Ea: 22.255}
+- equation: CH-Ni + H-Ni => CH2-Ni + Ni  # Reaction 23
+  rate-constant: {A: 3.21e+25, b: -0.084, Ea: 81.051}
+- equation: CH2-Ni + Ni => CH-Ni + H-Ni  # Reaction 24
+  rate-constant: {A: 6.156e+24, b: 0.084, Ea: 95.229}
+- equation: CH2-Ni + H-Ni => CH3-Ni + Ni  # Reaction 25
+  rate-constant: {A: 7.778e+22, b: -0.048, Ea: 59.452}
+- equation: CH3-Ni + Ni => CH2-Ni + H-Ni  # Reaction 26
+  rate-constant: {A: 6.157e+24, b: 0.048, Ea: 95.878}
+- equation: CH3-Ni + H-Ni => CH4-Ni + Ni  # Reaction 27
+  rate-constant: {A: 3.628e+21, b: -0.048, Ea: 65.702}
+- equation: CH4-Ni + Ni => CH3-Ni + H-Ni  # Reaction 28
+  rate-constant: {A: 6.156e+21, b: 0.048, Ea: 53.578}
+- equation: O-Ni + H-Ni => OH-Ni + Ni  # Reaction 29
+  rate-constant: {A: 1.158e+24, b: -0.176, Ea: 104.199}
+- equation: OH-Ni + Ni => O-Ni + H-Ni  # Reaction 30
+  rate-constant: {A: 7.696e+19, b: 0.176, Ea: 29.791}
+- equation: OH-Ni + H-Ni => H2O-Ni + Ni  # Reaction 31
+  rate-constant: {A: 2.342e+20, b: 0.075, Ea: 44.095}
+- equation: H2O-Ni + Ni => OH-Ni + H-Ni  # Reaction 32
+  rate-constant: {A: 2.907e+21, b: -0.075, Ea: 90.365}
+- equation: OH-Ni + OH-Ni => O-Ni + H2O-Ni  # Reaction 33
+  rate-constant: {A: 1.011e+20, b: 0.251, Ea: 95.091}
+- equation: O-Ni + H2O-Ni => OH-Ni + OH-Ni  # Reaction 34
+  rate-constant: {A: 1.889e+25, b: -0.251, Ea: 215.769}
+- equation: CO2-Ni + H-Ni => COOH-Ni + Ni  # Reaction 35
+  rate-constant: {A: 1.287e+25, b: -0.46, Ea: 117.2}
+- equation: COOH-Ni + Ni => CO2-Ni + H-Ni  # Reaction 36
+  rate-constant: {A: 1.288e+20, b: 0.46, Ea: 33.8}
+- equation: COOH-Ni + Ni => OH-Ni + CO-Ni  # Reaction 37
+  rate-constant: {A: 6.032e+23, b: -0.216, Ea: 54.368}
+- equation: OH-Ni + CO-Ni => COOH-Ni + Ni  # Reaction 38
+  rate-constant: {A: 1.453e+21, b: 0.216, Ea: 97.632}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: COOH-Ni + H-Ni => HCO-Ni + OH-Ni  # Reaction 39
+  rate-constant: {A: 4.22e+23, b: -1.145, Ea: 104.732}
+- equation: HCO-Ni + OH-Ni => COOH-Ni + H-Ni  # Reaction 40
+  rate-constant: {A: 3.246e+19, b: 0.245, Ea: 16.068}
+- equation: CO-Ni + CO-Ni => C-Ni + CO2-Ni  # Reaction 41
+  rate-constant: {A: 6.312e+13, b: 0.5, Ea: 241.679}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -100.000}}
+- equation: C-Ni + CO2-Ni => CO-Ni + CO-Ni  # Reaction 42
+  rate-constant: {A: 1.878e+21, b: -0.5, Ea: 239.321}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.000}}
