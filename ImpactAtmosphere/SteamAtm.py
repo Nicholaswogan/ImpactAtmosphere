@@ -76,13 +76,12 @@ class SteamAtm():
         """
 
         # P_init = [dynes], N_init = [mol/cm2]
-        N_init, P_init, X = \
-        self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
-        sol = self.cooling_steam_atmosphere_1(N_H2O_ocean, N_init, P_init, X)
+        N_init = self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
+        sol = self.cooling_steam_atmosphere_1(N_init)
         sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
-    def cooling_steam_atmosphere_1(self, N_H2O_ocean, N_init, P_init, X):
+    def cooling_steam_atmosphere_1(self, N_init):
         """Integrates atmosphere from a very hot state (2000 K) down to where 
         H2O begins to condense.
         """
@@ -289,11 +288,11 @@ class SteamAtm():
         N_init[self.gas.species_names.index('N2')] = N_N2
         N_init[self.gas.species_names.index('CH4')] = N_CH4_init
 
-        P_init = np.sum(self.gas.molecular_weights*N_init*self.grav) # (dynes)
-        self.gas.TPX = self.T_prime,P_init*0.1,(N_init/np.sum(N_init))
-        self.gas.equilibrate('TP') # equilibrate
-        N_init = self.gas.X*np.sum(N_init)
-        return N_init, P_init, self.gas.X    
+        mubar, Psurf, Ntot, Mtot, mix = self.prep_atmosphere(self.T_prime, N_init)
+        self.gas.TPX = self.T_prime,Psurf/10.0,mix
+        self.gas.equilibrate('TP')
+        N_init = self.gas.X*Ntot
+        return N_init
 
     def steam_from_impact(self,N_H2O_ocean, N_CO2, N_N2, m_i):
         """Calculates the amount of steam heated to self.T_prime by an impactor
@@ -436,8 +435,6 @@ class SteamAtm():
                 sol_dry[sp] = sol_stm[sp][-1]*Ntot/Ntot_dry
                 mubar_dry += self.gas.molecular_weights[i]*sol_dry[sp]
         Psurf_dry = Ntot_dry*mubar_dry*self.grav
-        print(Ntot_dry,mubar_dry,self.grav)
-        print(Ntot_dry*mubar_dry*self.grav)
         sol_dry['Psurf'] = Psurf_dry
         sol_dry['mubar'] = mubar_dry
         
