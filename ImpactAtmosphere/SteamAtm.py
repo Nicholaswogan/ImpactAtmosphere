@@ -413,6 +413,36 @@ class SteamAtm():
                 out[key][i] = self.gas.X[j]
         return out
 
+    def init_for_integrate(self, sol):
+        Ninit_dict = {}
+        species = ['H2','CO','CO2','CH4','N2','NH3']
+        for spec in species:
+            Ninit_dict[spec] = sol[spec][-1]*sol['Ntot'][-1]
+        Ninit_dict['NH3'] = 0.0
+        return Ninit_dict
+        
+    def dry_end_atmos(self, sol_stm):
+        Ntot = sol_stm['Ntot'][-1]
+        Ntot_dry = Ntot - Ntot*sol_stm['H2O'][-1]
+
+        sol_dry = {}
+        sol_dry['Ntot'] = Ntot_dry
+
+        mubar_dry = 0.0
+        for i,sp in enumerate(self.gas.species_names):
+            if sp =='H2O':
+                sol_dry['H2O'] = 0.0
+            else:
+                sol_dry[sp] = sol_stm[sp][-1]*Ntot/Ntot_dry
+                mubar_dry += self.gas.molecular_weights[i]*sol_dry[sp]
+        Psurf_dry = Ntot_dry*mubar_dry*self.grav
+        print(Ntot_dry,mubar_dry,self.grav)
+        print(Ntot_dry*mubar_dry*self.grav)
+        sol_dry['Psurf'] = Psurf_dry
+        sol_dry['mubar'] = mubar_dry
+        
+        return sol_dry
+
 class ImpactSolution():
     def __init__(self, stm):
         self.stm = stm
