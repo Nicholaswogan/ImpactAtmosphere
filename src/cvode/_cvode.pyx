@@ -74,7 +74,7 @@ cdef class CVode():
   cdef CVodeData d;
   
   def __init__(self, object rhsfcn, double t0, ndarray[double,ndim=1] y0, double rtol = 1.0e-3, double atol = 1.0e-6, 
-               tuple args = (), int ng = 0, object g = None, object verbose = False):
+               tuple args = (), int ng = 0, object g = None, object verbose = False, mxsteps = 2000):
     cdef CVodeData *d = &self.d
     create_CVodeData(d)
 
@@ -124,7 +124,6 @@ cdef class CVode():
     if ret < 0:
       raise CVodeException("CVodeSetLinearSolver failed")
 
-    cdef long int mxsteps = 1000
     ret = pxd.CVodeSetMaxNumSteps(d.cvode_mem, mxsteps)
     if ret < 0:
       raise CVodeException("CVodeSetMaxNumSteps failed")

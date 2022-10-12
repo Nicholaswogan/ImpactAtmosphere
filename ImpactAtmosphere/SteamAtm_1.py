@@ -21,13 +21,17 @@ class SteamAtm():
                 self.surface_catalyst = True
                 self.surf_phase = ct.Interface('Methanation_Ni.yaml','Ni-surface')
                 self.gas = self.surf_phase.adjacent["gas"]
-                self.nsurf = len(self.surf_phase.species_names)
-                self.ngas = len(self.gas.species_names)
             else:
                 self.gas = ct.Solution(gas)
         else:
             self.gas = gas # cantera gas object
         self.gas.basis = 'mass'
+
+        self.ngas = self.gas.n_total_species
+        if self.surface_catalyst:
+            self.nsurf = self.surf_phase.n_total_species - self.ngas
+        else:
+            self.nsurf = 0
 
         # index of H2O
         self.ind_H2O = self.gas.species_names.index('H2O')
@@ -40,10 +44,11 @@ class SteamAtm():
         self.v_i = v_i # velocity of impactor (cm/s)
         if self.surface_catalyst:
             self.Ni_area = Ni_area # cm^2 Ni surface / cm^2 column of the atmosphere
+            self.site_density = self.surf_phase.site_density*1.0e3/1.0e4 # mol catalyst/cm2 metal
 
         # Settings
-        self.rtol = 1e-4 # relative tolerance
-        self.atol = 1e-20 # absolute tolerance
+        self.rtol = 1.0e-5 # relative tolerance
+        self.atol = 1.0e-18 # absolute tolerance
         self.dTime = 10.0
         self.max_integrator_errors = 10
         self.T_stop = 400.0
@@ -79,7 +84,7 @@ class SteamAtm():
         N_init, P_init, X = \
         self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_H2O_ocean, N_init, P_init, X)
-        sol = self.cooling_steam_atmosphere_2(sol)
+        # sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
     def cooling_steam_atmosphere_2(self, sol):
@@ -130,16 +135,16 @@ class SteamAtm():
                 elif ret == 2:
                     c.rootinfo(roots)
                     if roots[0] != 0:
-                        # append the transition
+                        # append the end state
                         sol.append(t.item(), y, 2)
                         break
             if ret < 0 or roots[0] != 0:
                 # stop if there is an error, or if 
-                # water has begun condensing
+                # the integration is finished
                 break
 
         if ret < 0:
-            raise Exception('First impact integration failed.')
+            raise Exception('Second impact integration failed.')
 
         return sol
 
@@ -150,7 +155,15 @@ class SteamAtm():
 
         # initialize integrator
         t0 = 0.0
-        y0 = np.append(self.T_prime, N_init)
+        if self.surface_catalyst:
+            X_surf = self.equilibrium_coverages(self.T_prime,P_init,X)
+            
+            # pico mol catalyst/cm2 Earth
+            # like the total column
+            y0_surf = X_surf*self.Ni_area*self.site_density*1.0e12
+            y0 = np.concatenate(([self.T_prime], N_init, y0_surf))
+        else:
+            y0 = np.append(self.T_prime, N_init)
         args = (self,)
         ng = 2
         c = CVode(rhs_first, t0, y0, rtol=self.rtol, atol=self.atol, args=args, ng=ng, g=stop_first)
@@ -159,7 +172,7 @@ class SteamAtm():
         tn = 0.0
         t = np.array(0.0)
         y = np.empty(y0.shape[0])
-        sol = ImpactSolution(self.gas, self.grav) # solution object
+        sol = ImpactSolution(self) # solution object
         sol.append(t0, y0, 1) # load initial conditions
         roots = np.zeros(ng,np.int32) # for root finding
 
@@ -202,9 +215,23 @@ class SteamAtm():
                 break
         
         if ret < 0:
-            raise Exception('Second impact integration failed.')
+            raise Exception('First impact integration failed.')
 
         return sol
+    
+    def equilibrium_coverages(self, T, P, X, time = 100):
+
+        # gas content
+        self.gas.TPX = T, P/10.0, X
+
+        ind = self.surf_phase.species_names.index('Ni')
+        y0 = np.zeros_like(self.surf_phase.X)
+        y0[ind] = 1.0
+        self.surf_phase.TPX = T, P/10.0, y0
+
+        self.surf_phase.advance_coverages(time)
+
+        return self.surf_phase.X
 
     def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i, N_CO_init, N_H2_init, N_CH4_init):
         """Determines the initial conditions for method `impact`.
@@ -326,25 +353,24 @@ class SteamAtm():
         return N_H2, N_H2O, N_CO, N_CO2
 
 class ImpactSolution():
-    def __init__(self, gas, grav):
-        self.gas = gas
-        self.grav = grav
+    def __init__(self, stm):
+        self.stm = stm
         self.time = np.empty((0,),np.float64)
         self.Tsurf = np.empty((0,),np.float64)
         self.mubar = np.empty((0,),np.float64)
         self.Psurf = np.empty((0,),np.float64)
         self.Ntot = np.empty((0,),np.float64)
         self.mix = {}
-        for i,name in enumerate(self.gas.species_names):
+        for i,name in enumerate(self.stm.gas.species_names):
             self.mix[name] = np.empty((0,),np.float64)
 
     def append(self, t, y, integ_type):
 
         if integ_type == 1:
-            Tsurf, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self.gas, self.grav)
+            Tsurf, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self.stm)
         elif integ_type == 2:
-            ind_H2O = self.gas.species_names.index('H2O')
-            Tsurf, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self.gas, self.grav, ind_H2O)
+            ind_H2O = self.stm.gas.species_names.index('H2O')
+            Tsurf, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self.stm)
         else:
             raise ValueError('Invalid integ_type')
 
@@ -354,7 +380,7 @@ class ImpactSolution():
         self.mubar = np.append(self.mubar, mubar)
         self.Psurf = np.append(self.Psurf, Psurf)
         self.Ntot = np.append(self.Ntot, Ntot)
-        for i,name in enumerate(self.gas.species_names):
+        for i,name in enumerate(self.stm.gas.species_names):
             self.mix[name] = np.append(self.mix[name],mix[i])
 
     def to_dict(self):
@@ -377,38 +403,52 @@ def OLR(T):
     return 1.6e5 + 500.0*np.maximum(T-1200.0,0.0) # ergs/cm2/s
 
 # rhs function for the first integration, when no condensation happens
-def prep_atm_first(y, gas, grav):
+def prep_atm_first(y, self):
     T = y[0]
-    N = y[1:]
+    N = y[1:self.ngas+1]
     Ntot = np.sum(N)
     mix = N/Ntot
-    gas.TPX = T, 1.0e5, mix
-    mubar = gas.mean_molecular_weight
-    Psurf = Ntot*mubar*grav
+    self.gas.X = mix
+    mubar = self.gas.mean_molecular_weight
+    Psurf = Ntot*mubar*self.grav
     return T, N, mubar, Psurf, Ntot, mix
+
+def prep_atm_first_catalyst(y, self):
+    N_cat = y[self.ngas+1:]
+    X_cat = N_cat/np.sum(N_cat)
+    return X_cat
 
 def rhs_first(t, y, dy, self):
 
     try:
-        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self.gas, self.grav)
+        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self)
         self.gas.TPX = T, Psurf/10.0, mix
+        if self.surface_catalyst:
+            X_cat = prep_atm_first_catalyst(y, self)
+            self.surf_phase.TPX = T,Psurf/10.0,X_cat
     except CanteraError:
         return 1
     
     # scale height
     Ha = const.N_avo*const.k_boltz*T/(mubar*self.grav)
     
-    # moles/cm3/s
-    rx_rates = self.gas.net_production_rates*1.0e3/1.0e6
-    # moles/cm2/s
-    dN_dt = rx_rates*Ha
-    
+    if self.surface_catalyst:
+        all_rates = self.surf_phase.net_production_rates
+        surf_rates = all_rates[:self.nsurf]*1.0e3/1.0e4 # mol/(cm2 metal * s)
+        gas_rates = all_rates[self.nsurf:]*1.0e3/1.0e6 # mol/(cm3 * s)
+
+        # surface rates
+        dy[self.ngas+1:] = surf_rates*self.Ni_area*1.0e12 # pico mol/(cm2 Earth * s)
+    else:
+        gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
+        
+    # gas rates
+    dy[1:self.ngas+1] = gas_rates*Ha # moles/cm2/s
+
     # climate
     Fir = OLR(T)
     dT_dt = -self.grav/(const.cp_H2O*Psurf)*Fir
-
     dy[0] = dT_dt
-    dy[1:] = dN_dt[:]
     
     return 0
 
@@ -416,14 +456,14 @@ def rhs_first(t, y, dy, self):
 # nothing is condensing
 def stop_first(t, y, gout, self):
     try:
-        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self.gas, self.grav)
+        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self)
     except CanteraError:
         return 1
 
     PH2O = Psurf*mix[self.ind_H2O]
 
     if T < const.T_crit_H2O:
-        gout[0] = sat_pressure_H2O(y[0]) - PH2O
+        gout[0] = sat_pressure_H2O(T) - PH2O
     else:
         gout[0] = 1.0
 
@@ -432,41 +472,41 @@ def stop_first(t, y, gout, self):
     gout[1] = T - (1500.0 + const.TOL)
     return 0
 
-def prep_atm_second(y, gas, grav, ind_H2O):
+def prep_atm_second(y, self):
     T = y[0]
     P_H2O = sat_pressure_H2O(T)
     
-    N = np.empty(gas.n_total_species)
-    N[:ind_H2O] = y[1:ind_H2O+1]
-    N[ind_H2O] = 0.0
-    N[ind_H2O+1:] = y[ind_H2O+1:]
+    N = np.empty(self.ngas)
+    N[:self.ind_H2O] = y[1:self.ind_H2O+1]
+    N[self.ind_H2O] = 0.0
+    N[self.ind_H2O+1:] = y[self.ind_H2O+1:self.ngas]
 
     # below, we compute the N_H2O
     N_dry = np.sum(N)
     X_dry = N/N_dry
-    gas.TPX = 600.0, 1.0e5, X_dry
-    mu_dry = gas.mean_molecular_weight
+    self.gas.X = X_dry
+    mu_dry = self.gas.mean_molecular_weight
 
     PP = np.empty(3)
-    PP[0] = const.mu_H2O*grav
-    PP[1] = N_dry*mu_dry*grav - P_H2O
+    PP[0] = const.mu_H2O*self.grav
+    PP[1] = N_dry*mu_dry*self.grav - P_H2O
     PP[2] = -N_dry*P_H2O
 
-    N_H2O = np.max(np.roots(PP))
-    N[ind_H2O] = N_H2O
+    N_H2O = np.max(np.real(np.roots(PP)))
+    N[self.ind_H2O] = N_H2O
     Ntot = np.sum(N)
     mix = N/Ntot
 
-    gas.TPX = 600.0, 1.0e5, mix
-    mubar = gas.mean_molecular_weight
-    Psurf = Ntot*mubar*grav
+    self.gas.X = mix
+    mubar = self.gas.mean_molecular_weight
+    Psurf = Ntot*mubar*self.grav
 
     return T, N, P_H2O, mubar, Psurf, Ntot, mix
 
 def rhs_second(t, y, dy, self):
 
     try:
-        T, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self.gas, self.grav, self.ind_H2O)
+        T, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self)
         self.gas.TPX = T, Psurf/10.0, mix
     except CanteraError:
         return 1
