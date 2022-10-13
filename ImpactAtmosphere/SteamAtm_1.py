@@ -84,7 +84,7 @@ class SteamAtm():
         N_init, P_init, X = \
         self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_H2O_ocean, N_init, P_init, X)
-        # sol = self.cooling_steam_atmosphere_2(sol)
+        sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
     def cooling_steam_atmosphere_2(self, sol):

@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from ImpactAtmosphere import EvolveAtm as atm
+from ImpactAtmosphere_1 import EvolveAtm as atm
 
 # initial conditions (moles/cm2)
 Ninit_dict = {'H2': 298.9,
