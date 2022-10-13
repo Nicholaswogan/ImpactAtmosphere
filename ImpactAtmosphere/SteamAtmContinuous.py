@@ -7,7 +7,7 @@ from ._cvode import CVode
 from . import constants as const
 
 
-class SteamAtm():
+class SteamAtmContinuous():
     def __init__(self, gas, T_prime= 2000, impactor_energy_frac = 0.5, \
         Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 17e5, 
         Ni_area = 1.0):
