@@ -2,9 +2,9 @@ import numpy as np
 import cantera as ct
 import os
 
-# Base class for the two approaches to solving the steam atmosphere
-
 class SteamAtmBase():
+    """Base class for the two approaches to solving the steam atmosphere
+    """
     
     def __init__(self, gas, T_prime, impactor_energy_frac, \
                  Fe_react_frac, impactor_Fe_frac, v_i, 
@@ -53,7 +53,7 @@ class SteamAtmBase():
     ##########################################
 
     def initial_conditions(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO_init, N_H2_init, N_CH4_init):
-        """Determines the initial conditions.
+        """Determines the initial conditions for integration
         """
 
         # Determine how much steam is made
@@ -204,11 +204,14 @@ class SteamAtmBase():
         Ninit_dict = {}
         species = ['H2','CO','CO2','CH4','N2','NH3']
         for spec in species:
-            Ninit_dict[spec] = sol[spec][-1]*sol['Ntot'][-1]
+            if spec in sol:
+                Ninit_dict[spec] = sol[spec][-1]*sol['Ntot'][-1]
+            else:
+                Ninit_dict[spec] = 0.0
         Ninit_dict['NH3'] = 0.0
         return Ninit_dict
         
-    def dry_end_atmos(self, sol_stm):
+    def dry_end_atmos(self, sol_stm, clip = True):
         Ntot = sol_stm['Ntot'][-1]
         Ntot_dry = Ntot - Ntot*sol_stm['H2O'][-1]
 
@@ -220,7 +223,11 @@ class SteamAtmBase():
             if sp =='H2O':
                 sol_dry['H2O'] = 0.0
             else:
-                sol_dry[sp] = sol_stm[sp][-1]*Ntot/Ntot_dry
+                if clip:
+                    mix = np.maximum(sol_stm[sp][-1],0.0)
+                else:
+                    mix = sol_stm[sp][-1]
+                sol_dry[sp] = mix*Ntot/Ntot_dry
                 mubar_dry += self.gas.molecular_weights[i]*sol_dry[sp]
         Psurf_dry = Ntot_dry*mubar_dry*self.grav
         sol_dry['Psurf'] = Psurf_dry
