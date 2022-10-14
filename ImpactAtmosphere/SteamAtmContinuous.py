@@ -20,7 +20,7 @@ class SteamAtmContinuous(SteamAtmBase):
         # Settings specific to SteamAtmContinuous
         self.rtol = 1.0e-4 # relative tolerance
         self.atol = 1.0e-20 # absolute tolerance
-        self.dTime = 10.0 # years
+        self.dTime = 10.0 # frequency in which solution is saved (years)
         self.max_integrator_errors = 10
         self.T_stop = 400.0
 
@@ -63,17 +63,16 @@ class SteamAtmContinuous(SteamAtmBase):
         be very hot (~2000 K), until water begins to condense.
         """
 
-        # initialize integrator
+        # initial conditions
         t0 = 0.0
         if self.surface_catalyst:
             X_surf = self.equilibrium_coverages(self.T_prime, P_init, X)
-            
-            # pico mol catalyst/cm2 Earth
-            # like the total column
-            y0_surf = X_surf*self.Ni_area*self.site_density*1.0e12
+            y0_surf = X_surf*self.Ni_area*self.site_density*1.0e12 # pico mol catalyst/cm2 Earth
             y0 = np.concatenate(([self.T_prime], N_init, y0_surf))
         else:
             y0 = np.append(self.T_prime, N_init)
+        
+        # initialize integrator
         args = (self,)
         ng = 2
         c = CVode(rhs_first, t0, y0, rtol=self.rtol, atol=self.atol, args=args, ng=ng, g=stop_first)
@@ -131,10 +130,11 @@ class SteamAtmContinuous(SteamAtmBase):
 
     def cooling_steam_atmosphere_2(self, sol):
         """integrates a steam atmosphere that has actively condensing H2O.
-        Initial conditions are given in `sol`.
+        Initial conditions are given in `sol`, and we append the solution to
+        `sol`.
         """
 
-        # initialize integrator
+        # Initial conditions
         t0 = sol.time[-1]
         N = np.empty(self.ngas - 1)
         i = 0
@@ -145,7 +145,9 @@ class SteamAtmContinuous(SteamAtmBase):
         if self.surface_catalyst:
             y0 = np.concatenate(([sol.Tsurf[-1]], N, sol.y[1+self.ngas:]))
         else:
-            y0 = np.append(sol.Tsurf[-1], N) # we ignore H2O
+            y0 = np.append(sol.Tsurf[-1], N)
+
+        # initialize integrator
         args = (self,)
         ng = 1
         c = CVode(rhs_second, t0, y0, rtol=self.rtol, atol=self.atol, args=args, ng=ng, g=stop_second)
@@ -194,79 +196,82 @@ class SteamAtmContinuous(SteamAtmBase):
         return sol
     
     def equilibrium_coverages(self, T, P, X):
+        """Given gas-phase conditions, this routine computes
+        Equilibrium coverages for the surface.
+        """
         self.gas.TPX = T, P/10.0, X
         self.surf_phase.TPX = T, P/10.0, {'Ni':1.0}
         self.surf_phase.advance_coverages(1.0e10, max_steps=1e7)
         return self.surf_phase.X
 
-class SteamAtmContinuousSolution():
-    def __init__(self, stm):
-        self.stm = stm
-        self.time = np.empty((0,),np.float64)
-        self.Tsurf = np.empty((0,),np.float64)
-        self.mubar = np.empty((0,),np.float64)
-        self.Psurf = np.empty((0,),np.float64)
-        self.Ntot = np.empty((0,),np.float64)
-        self.mix = {}
-        for i,name in enumerate(self.stm.gas.species_names):
-            self.mix[name] = np.empty((0,),np.float64)
+    def prep_atm_first(self, y):
+        T = y[0]
+        N = y[1:self.ngas+1]
+        Ntot = np.sum(N)
+        mix = N/Ntot
+        self.gas.X = mix
+        mubar = self.gas.mean_molecular_weight
+        Psurf = Ntot*mubar*self.grav
+        return T, N, mubar, Psurf, Ntot, mix
 
-    def append(self, t, y, integ_type):
+    def prep_atm_first_catalyst(self, y):
+        N_cat = y[self.ngas+1:]
+        X_cat = N_cat/np.sum(N_cat)
+        return X_cat
 
-        if integ_type == 1:
-            Tsurf, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self.stm)
-        elif integ_type == 2:
-            ind_H2O = self.stm.gas.species_names.index('H2O')
-            Tsurf, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self.stm)
-        else:
-            raise ValueError('Invalid integ_type')
+    def prep_atm_second(self, y):
+        T = y[0]
+        P_H2O = sat_pressure_H2O(T)
+        
+        N = np.empty(self.ngas)
+        N[:self.ind_H2O] = y[1:self.ind_H2O+1]
+        N[self.ind_H2O] = 0.0
+        N[self.ind_H2O+1:] = y[self.ind_H2O+1:self.ngas]
 
-        # append
-        self.time = np.append(self.time, t)
-        self.Tsurf = np.append(self.Tsurf, Tsurf)
-        self.mubar = np.append(self.mubar, mubar)
-        self.Psurf = np.append(self.Psurf, Psurf)
-        self.Ntot = np.append(self.Ntot, Ntot)
-        for i,name in enumerate(self.stm.gas.species_names):
-            self.mix[name] = np.append(self.mix[name],mix[i])
+        # below, we compute the N_H2O
+        N_dry = np.sum(N)
+        X_dry = N/N_dry
+        self.gas.X = X_dry
+        mu_dry = self.gas.mean_molecular_weight
 
-        # we save the current y
-        self.y = y
+        PP = np.empty(3)
+        PP[0] = const.mu_H2O*self.grav
+        PP[1] = N_dry*mu_dry*self.grav - P_H2O
+        PP[2] = -N_dry*P_H2O
 
-    def to_dict(self):
-        sol = {}
-        sol['time'] = self.time
-        sol['Tsurf'] = self.Tsurf
-        sol['mubar'] = self.mubar
-        sol['Psurf'] = self.Psurf
-        sol['Ntot'] = self.Ntot
-        for key in self.mix:
-            sol[key] = self.mix[key]
-        return sol
+        N_H2O = np.max(np.real(np.roots(PP)))
+        N[self.ind_H2O] = N_H2O
+        Ntot = np.sum(N)
+        mix = N/Ntot
 
-# rhs function for the first integration, when no condensation happens
-def prep_atm_first(y, self):
-    T = y[0]
-    N = y[1:self.ngas+1]
-    Ntot = np.sum(N)
-    mix = N/Ntot
-    self.gas.X = mix
-    mubar = self.gas.mean_molecular_weight
-    Psurf = Ntot*mubar*self.grav
-    return T, N, mubar, Psurf, Ntot, mix
+        self.gas.X = mix
+        mubar = self.gas.mean_molecular_weight
+        Psurf = Ntot*mubar*self.grav
 
-def prep_atm_first_catalyst(y, self):
-    N_cat = y[self.ngas+1:]
-    X_cat = N_cat/np.sum(N_cat)
-    return X_cat
+        return T, N, P_H2O, mubar, Psurf, Ntot, mix
+
+    def prep_atm_second_catalyst(self, y):
+        N_cat = y[self.ngas:]
+        X_cat = N_cat/np.sum(N_cat)
+        return X_cat
+
+##############################
+### RHS and Root functions ###
+##############################
+
+# right-hand-side and root functions for
+# both integrations involved in the post-impact atmosphere
 
 def rhs_first(t, y, dy, self):
+    """right-hand-side function for when the atmosphere is
+    is very hot, and has no condensing H2O.
+    """    
 
     try:
-        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self)
+        T, N, mubar, Psurf, Ntot, mix = self.prep_atm_first(y)
         self.gas.TPX = T, Psurf/10.0, mix
         if self.surface_catalyst:
-            X_cat = prep_atm_first_catalyst(y, self)
+            X_cat = self.prep_atm_first_catalyst(y)
             self.surf_phase.TPX = T,Psurf/10.0,X_cat
     except CanteraError:
         return 1
@@ -293,11 +298,16 @@ def rhs_first(t, y, dy, self):
     
     return 0
 
-# root finding function for first integration, where
-# nothing is condensing
 def stop_first(t, y, gout, self):
+    """root-finding function for when the atmosphere is
+    is very hot, and has no condensing H2O. We seek roots
+    water begins condensing, and when T = 1500 K, which
+    the integrator does not like, so we skip over that exact
+    temperature.
+    """   
+
     try:
-        T, N, mubar, Psurf, Ntot, mix = prep_atm_first(y, self)
+        T, N, mubar, Psurf, Ntot, mix = self.prep_atm_first(y)
     except CanteraError:
         return 1
 
@@ -313,49 +323,15 @@ def stop_first(t, y, gout, self):
     gout[1] = T - (1500.0 + const.TOL)
     return 0
 
-def prep_atm_second(y, self):
-    T = y[0]
-    P_H2O = sat_pressure_H2O(T)
-    
-    N = np.empty(self.ngas)
-    N[:self.ind_H2O] = y[1:self.ind_H2O+1]
-    N[self.ind_H2O] = 0.0
-    N[self.ind_H2O+1:] = y[self.ind_H2O+1:self.ngas]
-
-    # below, we compute the N_H2O
-    N_dry = np.sum(N)
-    X_dry = N/N_dry
-    self.gas.X = X_dry
-    mu_dry = self.gas.mean_molecular_weight
-
-    PP = np.empty(3)
-    PP[0] = const.mu_H2O*self.grav
-    PP[1] = N_dry*mu_dry*self.grav - P_H2O
-    PP[2] = -N_dry*P_H2O
-
-    N_H2O = np.max(np.real(np.roots(PP)))
-    N[self.ind_H2O] = N_H2O
-    Ntot = np.sum(N)
-    mix = N/Ntot
-
-    self.gas.X = mix
-    mubar = self.gas.mean_molecular_weight
-    Psurf = Ntot*mubar*self.grav
-
-    return T, N, P_H2O, mubar, Psurf, Ntot, mix
-
-def prep_atm_second_catalyst(y, self):
-    N_cat = y[self.ngas:]
-    X_cat = N_cat/np.sum(N_cat)
-    return X_cat
-
 def rhs_second(t, y, dy, self):
+    """right-hand-side function for when the atmosphere has condensing H2O.
+    """   
 
     try:
-        T, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self)
+        T, N, P_H2O, mubar, Psurf, Ntot, mix = self.prep_atm_second(y)
         self.gas.TPX = T, Psurf/10.0, mix
         if self.surface_catalyst:
-            X_cat = prep_atm_second_catalyst(y, self)
+            X_cat = self.prep_atm_second_catalyst(y)
             self.surf_phase.TPX = T,Psurf/10.0,X_cat
     except CanteraError:
         return 1
@@ -389,7 +365,55 @@ def rhs_second(t, y, dy, self):
     return 0
 
 def stop_second(t, y, gout, self):
+    """root-finding function for when the atmosphere has condensing H2O.
+    We stop when T == T_stop
+    """
     gout[0] = y[0] - self.T_stop
     return 0
-    
 
+class SteamAtmContinuousSolution():
+    """A helper class to store the solution as we go along
+    """
+    def __init__(self, stm):
+        self.stm = stm
+        self.time = np.empty((0,),np.float64)
+        self.Tsurf = np.empty((0,),np.float64)
+        self.mubar = np.empty((0,),np.float64)
+        self.Psurf = np.empty((0,),np.float64)
+        self.Ntot = np.empty((0,),np.float64)
+        self.mix = {}
+        for i,name in enumerate(self.stm.gas.species_names):
+            self.mix[name] = np.empty((0,),np.float64)
+
+    def append(self, t, y, integ_type):
+
+        if integ_type == 1:
+            Tsurf, N, mubar, Psurf, Ntot, mix = self.stm.prep_atm_first(y)
+        elif integ_type == 2:
+            ind_H2O = self.stm.gas.species_names.index('H2O')
+            Tsurf, N, P_H2O, mubar, Psurf, Ntot, mix = self.stm.prep_atm_second(y)
+        else:
+            raise ValueError('Invalid integ_type')
+
+        # append
+        self.time = np.append(self.time, t)
+        self.Tsurf = np.append(self.Tsurf, Tsurf)
+        self.mubar = np.append(self.mubar, mubar)
+        self.Psurf = np.append(self.Psurf, Psurf)
+        self.Ntot = np.append(self.Ntot, Ntot)
+        for i,name in enumerate(self.stm.gas.species_names):
+            self.mix[name] = np.append(self.mix[name],mix[i])
+
+        # we save the current y
+        self.y = y
+
+    def to_dict(self):
+        sol = {}
+        sol['time'] = self.time
+        sol['Tsurf'] = self.Tsurf
+        sol['mubar'] = self.mubar
+        sol['Psurf'] = self.Psurf
+        sol['Ntot'] = self.Ntot
+        for key in self.mix:
+            sol[key] = self.mix[key]
+        return sol

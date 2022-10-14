@@ -241,8 +241,9 @@ class SteamAtm(SteamAtmBase):
         dtime = -(1/dT_dt)*self.dTemp
         return dtime
 
-# helper class to save results
 class SteamAtmSolution():
+    """helper class to save results
+    """
 
     def __init__(self, stm):
         self.stm = stm
