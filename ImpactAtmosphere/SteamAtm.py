@@ -111,13 +111,13 @@ class SteamAtm():
                 # advance material surface for 10 seconds while keeping
                 # gas phase fixed. This makes the material properties
                 # realistic and consistent with the gas
-                self.surf_phase.advance_coverages(10,max_steps=1e7,rtol=self.rtol,atol=self.atol)
+                self.surf_phase.advance_coverages(1.0e5,max_steps=1e7,rtol=self.rtol,atol=self.atol)
                 # volume of a 1 cm2 column of the atmosphere. I multiply scale height
                 # by 1.0 cm2
                 Hscale_prev = const.N_avo*const.k_boltz*Tsurf_prev/(mubar_prev*self.grav)
                 volume_column = Hscale_prev*1.0
-                r.volume = volume_column/1e6 # convert to m3
-                Ni_area_SI = self.Ni_area/1e2 # conver to m2
+                r.volume = volume_column/1.0e6 # convert to m3
+                Ni_area_SI = self.Ni_area/1.0e4 # conver to m2
                 # Make the catalytic nickel surface part of the reactor network
                 rs = ct.ReactorSurface(kin=self.surf_phase, r=r, A=Ni_area_SI)
             reactorNetwork = ct.ReactorNet([r])
@@ -184,13 +184,13 @@ class SteamAtm():
                 # advance material surface for 10 seconds while keeping
                 # gas phase fixed. This makes the material properties
                 # realistic and consistent with the gas
-                self.surf_phase.advance_coverages(10,max_steps=1e7,rtol=self.rtol,atol=self.atol)
+                self.surf_phase.advance_coverages(1.0e5,max_steps=1e7,rtol=self.rtol,atol=self.atol)
                 # volume of a 1 cm2 column of the atmosphere. I multiply scale height
                 # by 1.0 cm2
                 Hscale_prev = const.N_avo*const.k_boltz*Tsurf_prev/(mubar_prev*self.grav)
                 volume_column = Hscale_prev*1.0
-                r.volume = volume_column/1e6 # convert to m3
-                Ni_area_SI = self.Ni_area/1e2 # conver to m2
+                r.volume = volume_column/1.0e6 # convert to m3
+                Ni_area_SI = self.Ni_area/1.0e4 # conver to m2
                 # Make the catalytic nickel surface part of the reactor network
                 rs = ct.ReactorSurface(kin=self.surf_phase, r=r, A=Ni_area_SI)
             reactorNetwork = ct.ReactorNet([r])
