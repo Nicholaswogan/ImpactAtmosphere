@@ -266,7 +266,8 @@ class SteamAtmContinuous(SteamAtmBase):
 def rhs_first(t, y, dy, self):
     """right-hand-side function for when the atmosphere is
     is very hot, and has no condensing H2O.
-    """    
+    """   
+    dy[:] = 0.0  
 
     try:
         T, N, mubar, Psurf, Ntot, mix = self.prep_atm_first(y)
@@ -288,9 +289,10 @@ def rhs_first(t, y, dy, self):
         # surface rates
         dy[self.ngas+1:] = surf_rates*self.Ni_area*1.0e12 # pico mol/(cm2 Earth * s)
         dy[1:self.ngas+1] = gas_rates*self.Ni_area # mol/(cm2 Earth * s)
-    else:
-        gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
-        dy[1:self.ngas+1] = gas_rates*Ha # moles/cm2/s
+
+    # gas rates
+    gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
+    dy[1:self.ngas+1] = dy[1:self.ngas+1] + gas_rates[:]*Ha # moles/cm2/s
 
     # climate
     Fir = OLR(T)
@@ -326,7 +328,8 @@ def stop_first(t, y, gout, self):
 
 def rhs_second(t, y, dy, self):
     """right-hand-side function for when the atmosphere has condensing H2O.
-    """   
+    """  
+    dy[:] = 0.0 
 
     try:
         T, N, P_H2O, mubar, Psurf, Ntot, mix = self.prep_atm_second(y)
@@ -351,11 +354,12 @@ def rhs_second(t, y, dy, self):
         dN_dt = gas_rates*self.Ni_area # mol/(cm2 Earth * s)
         dy[1:self.ind_H2O+1] = dN_dt[:self.ind_H2O]
         dy[self.ind_H2O+1:self.ngas] = dN_dt[self.ind_H2O+1:]
-    else:
-        gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
-        dN_dt = gas_rates*Ha # moles/cm2/s
-        dy[1:self.ind_H2O+1] = dN_dt[:self.ind_H2O]
-        dy[self.ind_H2O+1:self.ngas] = dN_dt[self.ind_H2O+1:]
+    
+    # gas rates
+    gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
+    dN_dt = gas_rates*Ha # moles/cm2/s
+    dy[1:self.ind_H2O+1] = dy[1:self.ind_H2O+1] + dN_dt[:self.ind_H2O]
+    dy[self.ind_H2O+1:self.ngas] = dy[self.ind_H2O+1:self.ngas] + dN_dt[self.ind_H2O+1:]
     
     # climate
     Fir = OLR(T)

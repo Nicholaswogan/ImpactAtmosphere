@@ -40,6 +40,8 @@ phases:
   thermo: ideal-gas
   elements: [N, O, Ar, H, C]
   species: [CH4, O2, CO, CO2, H2, H2O, AR, N2]
+  kinetics: gas
+  reactions: [gas-reactions]
   state: {T: 900.0, P: 1 atm}
 - name: Ni-surface
   thermo: ideal-surface
@@ -339,3 +341,7 @@ surface-reactions:
 - equation: C-Ni + CO2-Ni => CO-Ni + CO-Ni
   rate-constant: {A: 0.003118492368152484, b: -0.5, Ea: 28783.70028118024}
   coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -12628.597279486235}}
+
+gas-reactions:
+- equation: H2 => H2
+  rate-constant: {A: 0.0, b: 0.0, Ea: 0.0}
