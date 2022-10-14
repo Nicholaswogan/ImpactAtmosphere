@@ -90,7 +90,7 @@ class SteamAtmContinuous():
         N_init, P_init, X = \
         self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_H2O_ocean, N_init, P_init, X)
-        # sol = self.cooling_steam_atmosphere_2(sol)
+        sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
     def cooling_steam_atmosphere_1(self, N_H2O_ocean, N_init, P_init, X):
@@ -171,13 +171,16 @@ class SteamAtmContinuous():
 
         # initialize integrator
         t0 = sol.time[-1]
-        N = np.empty(self.gas.n_total_species - 1)
+        N = np.empty(self.ngas - 1)
         i = 0
         for j,name in enumerate(self.gas.species_names):
             if name != 'H2O':
                 N[i] = sol.mix[name][-1]*sol.Ntot[-1]
                 i += 1
-        y0 = np.append(sol.Tsurf[-1], N) # we ignore H2O
+        if self.surface_catalyst:
+            y0 = np.concatenate(([sol.Tsurf[-1]], N, sol.y[1+self.ngas:]))
+        else:
+            y0 = np.append(sol.Tsurf[-1], N) # we ignore H2O
         args = (self,)
         ng = 1
         c = CVode(rhs_second, t0, y0, rtol=self.rtol, atol=self.atol, args=args, ng=ng, g=stop_second)
@@ -225,7 +228,7 @@ class SteamAtmContinuous():
 
         return sol
     
-    def equilibrium_coverages(self, T, P, X, time = 100):
+    def equilibrium_coverages(self, T, P, X, time = 1.0e5):
 
         # gas content
         self.gas.TPX = T, P/10.0, X
@@ -389,6 +392,9 @@ class ImpactSolution():
         for i,name in enumerate(self.stm.gas.species_names):
             self.mix[name] = np.append(self.mix[name],mix[i])
 
+        # we save the current y
+        self.y = y
+
     def to_dict(self):
         sol = {}
         sol['time'] = self.time
@@ -433,15 +439,14 @@ def rhs_first(t, y, dy, self):
     if self.surface_catalyst:
         all_rates = self.surf_phase.net_production_rates
         surf_rates = all_rates[:self.nsurf]*1.0e3/1.0e4 # mol/(cm2 metal * s)
-        gas_rates = all_rates[self.nsurf:]*1.0e3/1.0e6 # mol/(cm3 * s)
+        gas_rates = all_rates[self.nsurf:]*1.0e3/1.0e4 # mol/(cm2 metal * s)
 
         # surface rates
         dy[self.ngas+1:] = surf_rates*self.Ni_area*1.0e12 # pico mol/(cm2 Earth * s)
+        dy[1:self.ngas+1] = gas_rates*self.Ni_area # mol/(cm2 Earth * s)
     else:
         gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
-        
-    # gas rates
-    dy[1:self.ngas+1] = gas_rates*Ha # moles/cm2/s
+        dy[1:self.ngas+1] = gas_rates*Ha # moles/cm2/s
 
     # climate
     Fir = OLR(T)
@@ -501,30 +506,47 @@ def prep_atm_second(y, self):
 
     return T, N, P_H2O, mubar, Psurf, Ntot, mix
 
+def prep_atm_second_catalyst(y, self):
+    N_cat = y[self.ngas:]
+    X_cat = N_cat/np.sum(N_cat)
+    return X_cat
+
 def rhs_second(t, y, dy, self):
 
     try:
         T, N, P_H2O, mubar, Psurf, Ntot, mix = prep_atm_second(y, self)
         self.gas.TPX = T, Psurf/10.0, mix
+        if self.surface_catalyst:
+            X_cat = prep_atm_second_catalyst(y, self)
+            self.surf_phase.TPX = T,Psurf/10.0,X_cat
     except CanteraError:
         return 1
 
     # scale height
     Ha = const.N_avo*const.k_boltz*T/(mubar*self.grav)
-    
-    # moles/cm3/s
-    rx_rates = self.gas.net_production_rates*1.0e3/1.0e6
-    # moles/cm2/s
-    dN_dt = rx_rates*Ha
+
+    if self.surface_catalyst:
+        all_rates = self.surf_phase.net_production_rates
+        surf_rates = all_rates[:self.nsurf]*1.0e3/1.0e4 # mol/(cm2 metal * s)
+        gas_rates = all_rates[self.nsurf:]*1.0e3/1.0e4 # mol/(cm2 metal * s)
+
+        # surface rates
+        dy[self.ngas:] = surf_rates*self.Ni_area*1.0e12 # pico mol/(cm2 Earth * s)
+        # gas rates
+        dN_dt = gas_rates*self.Ni_area # mol/(cm2 Earth * s)
+        dy[1:self.ind_H2O+1] = dN_dt[:self.ind_H2O]
+        dy[self.ind_H2O+1:self.ngas] = dN_dt[self.ind_H2O+1:]
+    else:
+        gas_rates = self.gas.net_production_rates*1.0e3/1.0e6 # mol/(cm3 * s)
+        dN_dt = gas_rates*Ha # moles/cm2/s
+        dy[1:self.ind_H2O+1] = dN_dt[:self.ind_H2O]
+        dy[self.ind_H2O+1:self.ngas] = dN_dt[self.ind_H2O+1:]
     
     # climate
     Fir = OLR(T)
     dT_dt = (-self.grav/(const.cp_H2O*Psurf))*Fir \
             *(1 + const.L_H2O**2*const.mu_H2O*P_H2O/(const.cp_H2O*Psurf*const.R*T**2))**-1
-
     dy[0] = dT_dt
-    dy[1:self.ind_H2O+1] = dN_dt[:self.ind_H2O]
-    dy[self.ind_H2O+1:] = dN_dt[self.ind_H2O+1:]
     
     return 0
 
