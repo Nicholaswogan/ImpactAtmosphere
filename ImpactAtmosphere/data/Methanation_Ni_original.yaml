@@ -29,11 +29,7 @@ description: |-
   ****                                                                  *
   ***********************************************************************
 
-  10/14/22 (NFW) - I changed the units to match typical photochemical
-  conventions
-  
-
-units: {length: cm, time: s, quantity: molec, activation-energy: K}
+units: {length: cm, time: s, quantity: mol, activation-energy: kJ/mol}
 
 phases:
 - name: gas
@@ -244,98 +240,98 @@ species:
     - [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 surface-reactions:
-- equation: H2 + Ni + Ni => H-Ni + H-Ni
+- equation: H2 + Ni + Ni => H-Ni + H-Ni  # Reaction 1
   sticking-coefficient: {A: 0.0145, b: 0, Ea: 0}
-- equation: H-Ni + H-Ni => Ni + Ni + H2
-  rate-constant: {A: 0.007535526286834915, b: -0.138, Ea: 11559.135498446316}
-- equation: CH4 + Ni => CH4-Ni
+- equation: H-Ni + H-Ni => Ni + Ni + H2  # Reaction 2
+  rate-constant: {A: 4.538e+21, b: -0.138, Ea: 96.108}
+- equation: CH4 + Ni => CH4-Ni  # Reaction 3
   sticking-coefficient: {A: 0.01064, b: 0.0, Ea: 0.0}
-- equation: CH4-Ni => Ni + CH4
-  rate-constant: {A: 2793000000000000.0, b: 0.085, Ea: 4447.3108724148815}
-- equation: H2O + Ni => H2O-Ni
+- equation: CH4-Ni => Ni + CH4  # Reaction 4
+  rate-constant: {A: 2.793e+15, b: 0.085, Ea: 36.977}
+- equation: H2O + Ni => H2O-Ni  # Reaction 5
   sticking-coefficient: {A: 0.1163, b: 0.0, Ea: 0.0}
-- equation: H2O-Ni => Ni + H2O
-  rate-constant: {A: 2035000000000.0, b: -0.031, Ea: 7341.184007097912}
-- equation: CO2 + Ni => CO2-Ni
+- equation: H2O-Ni => Ni + H2O  # Reaction 6
+  rate-constant: {A: 2.035e+12, b: -0.031, Ea: 61.038}
+- equation: CO2 + Ni => CO2-Ni  # Reaction 7
   sticking-coefficient: {A: 6.288e-05, b: 0.0, Ea: 0.0}
-- equation: CO2-Ni => Ni + CO2
-  rate-constant: {A: 49930000.0, b: 0.018, Ea: 3106.7552031086566}
-- equation: CO + Ni => CO-Ni
+- equation: CO2-Ni => Ni + CO2  # Reaction 8
+  rate-constant: {A: 4.993e+07, b: 0.018, Ea: 25.831}
+- equation: CO + Ni => CO-Ni  # Reaction 9
   sticking-coefficient: {A: 0.3737, b: 0.0, Ea: 0.0}
-- equation: CO-Ni => Ni + CO
-  rate-constant: {A: 1144000000000.0, b: -0.103, Ea: 13469.541585944975}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -6013.617752136302}}
-- equation: CO2-Ni + Ni => O-Ni + CO-Ni
-  rate-constant: {A: 0.26585230465453286, b: -1.001, Ea: 10743.207841836462}
-- equation: O-Ni + CO-Ni => CO2-Ni + Ni
-  rate-constant: {A: 9.641089824011352e-05, b: 0.0, Ea: 14865.18199386077}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -6013.617752136302}}
-- equation: CO-Ni + Ni => C-Ni + O-Ni
-  rate-constant: {A: 3.9105695031944087e-10, b: 0.0, Ea: 13971.197578828185}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -6013.617752136302}}
-- equation: C-Ni + O-Ni => CO-Ni + Ni
-  rate-constant: {A: 4.219429769688744e-06, b: 0.0, Ea: 17809.569517661745}
-  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -12628.597279486235}}
-- equation: CO-Ni + H-Ni => C-Ni + OH-Ni
-  rate-constant: {A: 5.056341459544363e-06, b: -0.223, Ea: 12661.311360057856}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -6013.617752136302}}
-- equation: C-Ni + OH-Ni => CO-Ni + H-Ni
-  rate-constant: {A: 3.626617322707681e-06, b: 0.128, Ea: 7550.457904872256}
-  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -12628.597279486235}}
-- equation: CO-Ni + H-Ni => HCO-Ni + Ni
-  rate-constant: {A: 0.011329858055327156, b: -0.979, Ea: 15885.452381688214}
-- equation: HCO-Ni + Ni => CO-Ni + H-Ni
-  rate-constant: {A: 0.00036183146273718116, b: -0.021, Ea: 18.161125611451634}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: 6013.617752136302}}
-- equation: HCO-Ni + Ni => CH-Ni + O-Ni
-  rate-constant: {A: 8.475391398855313e-09, b: 0.023, Ea: 9828.53658173653}
-- equation: CH-Ni + O-Ni => HCO-Ni + Ni
-  rate-constant: {A: 5.6807041488017286e-05, b: -0.023, Ea: 13249.322903861745}
-- equation: C-Ni + H-Ni => CH-Ni + Ni
-  rate-constant: {A: 2.2035353421396944, b: -0.456, Ea: 18961.538134260976}
-  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -12628.597279486235}}
-- equation: CH-Ni + Ni => C-Ni + H-Ni
-  rate-constant: {A: 0.04372199363868738, b: 0.456, Ea: 2676.6612614758683}
-- equation: CH-Ni + H-Ni => CH2-Ni + Ni
-  rate-constant: {A: 53.303304056280474, b: -0.084, Ea: 9748.19464856799}
-- equation: CH2-Ni + Ni => CH-Ni + H-Ni
-  rate-constant: {A: 10.222278497522199, b: 0.084, Ea: 11453.41609836376}
-- equation: CH2-Ni + H-Ni => CH3-Ni + Ni
-  rate-constant: {A: 0.12915672864478178, b: -0.048, Ea: 7150.432052000149}
-- equation: CH3-Ni + Ni => CH2-Ni + H-Ni
-  rate-constant: {A: 10.223939036589373, b: 0.048, Ea: 11531.472856786488}
-- equation: CH3-Ni + H-Ni => CH4-Ni + Ni
-  rate-constant: {A: 0.006024435735706715, b: -0.048, Ea: 7902.134271017187}
-- equation: CH4-Ni + Ni => CH3-Ni + H-Ni
-  rate-constant: {A: 0.010222278497522198, b: 0.048, Ea: 6443.952238479176}
-- equation: O-Ni + H-Ni => OH-Ni + Ni
-  rate-constant: {A: 1.9229042397873142, b: -0.176, Ea: 12532.259123097012}
-- equation: OH-Ni + Ni => O-Ni + H-Ni
-  rate-constant: {A: 0.00012779508660969922, b: 0.176, Ea: 3583.0337290778516}
-- equation: OH-Ni + H-Ni => H2O-Ni + Ni
-  rate-constant: {A: 0.00038889824953211485, b: 0.075, Ea: 5303.409495609005}
-- equation: H2O-Ni + Ni => OH-Ni + H-Ni
-  rate-constant: {A: 0.004827187068274372, b: -0.075, Ea: 10868.41136343594}
-- equation: OH-Ni + OH-Ni => O-Ni + H2O-Ni
-  rate-constant: {A: 0.00016788049969127588, b: 0.251, Ea: 11436.818513367863}
-- equation: O-Ni + H2O-Ni => OH-Ni + OH-Ni
-  rate-constant: {A: 31.367582978913962, b: -0.251, Ea: 25951.045775213955}
-- equation: CO2-Ni + H-Ni => COOH-Ni + Ni
-  rate-constant: {A: 21.371137794527403, b: -0.46, Ea: 14095.920011007493}
-- equation: COOH-Ni + Ni => CO2-Ni + H-Ni
-  rate-constant: {A: 0.00021387743185199144, b: 0.46, Ea: 4065.2056004441406}
-- equation: COOH-Ni + Ni => OH-Ni + CO-Ni
-  rate-constant: {A: 1.0016371653192642, b: -0.216, Ea: 6538.96739896293}
-- equation: OH-Ni + CO-Ni => COOH-Ni + Ni
-  rate-constant: {A: 0.002412763264603599, b: 0.216, Ea: 11742.43056753143}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -6013.617752136302}}
-- equation: COOH-Ni + H-Ni => HCO-Ni + OH-Ni
-  rate-constant: {A: 0.7007474863473633, b: -1.145, Ea: 12596.364288334784}
-- equation: HCO-Ni + OH-Ni => COOH-Ni + H-Ni
-  rate-constant: {A: 5.390109812046306e-05, b: 0.245, Ea: 1932.5362008265224}
-- equation: CO-Ni + CO-Ni => C-Ni + CO2-Ni
-  rate-constant: {A: 1.048132259200132e-10, b: 0.5, Ea: 29067.30249437099}
-  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -12027.235504272605}}
-- equation: C-Ni + CO2-Ni => CO-Ni + CO-Ni
-  rate-constant: {A: 0.003118492368152484, b: -0.5, Ea: 28783.70028118024}
-  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -12628.597279486235}}
+- equation: CO-Ni => Ni + CO  # Reaction 10
+  rate-constant: {A: 1.144e+12, b: -0.103, Ea: 111.992}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: CO2-Ni + Ni => O-Ni + CO-Ni  # Reaction 11
+  rate-constant: {A: 1.601e+23, b: -1.001, Ea: 89.324}
+- equation: O-Ni + CO-Ni => CO2-Ni + Ni  # Reaction 12
+  rate-constant: {A: 5.806e+19, b: 0.0, Ea: 123.596}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: CO-Ni + Ni => C-Ni + O-Ni  # Reaction 13
+  rate-constant: {A: 2.355e+14, b: 0.0, Ea: 116.163}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: C-Ni + O-Ni => CO-Ni + Ni  # Reaction 14
+  rate-constant: {A: 2.541e+18, b: 0.0, Ea: 148.077}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CO-Ni + H-Ni => C-Ni + OH-Ni  # Reaction 15
+  rate-constant: {A: 3.045e+18, b: -0.223, Ea: 105.272}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: C-Ni + OH-Ni => CO-Ni + H-Ni  # Reaction 16
+  rate-constant: {A: 2.184e+18, b: 0.128, Ea: 62.778}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CO-Ni + H-Ni => HCO-Ni + Ni  # Reaction 17
+  rate-constant: {A: 6.823e+21, b: -0.979, Ea: 132.079}
+- equation: HCO-Ni + Ni => CO-Ni + H-Ni  # Reaction 18
+  rate-constant: {A: 2.179e+20, b: -0.021, Ea: 0.151}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: 50.000}}
+- equation: HCO-Ni + Ni => CH-Ni + O-Ni  # Reaction 19
+  rate-constant: {A: 5.104e+15, b: 0.023, Ea: 81.719}
+- equation: CH-Ni + O-Ni => HCO-Ni + Ni  # Reaction 20
+  rate-constant: {A: 3.421e+19, b: -0.023, Ea: 110.161}
+- equation: C-Ni + H-Ni => CH-Ni + Ni  # Reaction 21
+  rate-constant: {A: 1.327e+24, b: -0.456, Ea: 157.655}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.00}}
+- equation: CH-Ni + Ni => C-Ni + H-Ni  # Reaction 22
+  rate-constant: {A: 2.633e+22, b: 0.456, Ea: 22.255}
+- equation: CH-Ni + H-Ni => CH2-Ni + Ni  # Reaction 23
+  rate-constant: {A: 3.21e+25, b: -0.084, Ea: 81.051}
+- equation: CH2-Ni + Ni => CH-Ni + H-Ni  # Reaction 24
+  rate-constant: {A: 6.156e+24, b: 0.084, Ea: 95.229}
+- equation: CH2-Ni + H-Ni => CH3-Ni + Ni  # Reaction 25
+  rate-constant: {A: 7.778e+22, b: -0.048, Ea: 59.452}
+- equation: CH3-Ni + Ni => CH2-Ni + H-Ni  # Reaction 26
+  rate-constant: {A: 6.157e+24, b: 0.048, Ea: 95.878}
+- equation: CH3-Ni + H-Ni => CH4-Ni + Ni  # Reaction 27
+  rate-constant: {A: 3.628e+21, b: -0.048, Ea: 65.702}
+- equation: CH4-Ni + Ni => CH3-Ni + H-Ni  # Reaction 28
+  rate-constant: {A: 6.156e+21, b: 0.048, Ea: 53.578}
+- equation: O-Ni + H-Ni => OH-Ni + Ni  # Reaction 29
+  rate-constant: {A: 1.158e+24, b: -0.176, Ea: 104.199}
+- equation: OH-Ni + Ni => O-Ni + H-Ni  # Reaction 30
+  rate-constant: {A: 7.696e+19, b: 0.176, Ea: 29.791}
+- equation: OH-Ni + H-Ni => H2O-Ni + Ni  # Reaction 31
+  rate-constant: {A: 2.342e+20, b: 0.075, Ea: 44.095}
+- equation: H2O-Ni + Ni => OH-Ni + H-Ni  # Reaction 32
+  rate-constant: {A: 2.907e+21, b: -0.075, Ea: 90.365}
+- equation: OH-Ni + OH-Ni => O-Ni + H2O-Ni  # Reaction 33
+  rate-constant: {A: 1.011e+20, b: 0.251, Ea: 95.091}
+- equation: O-Ni + H2O-Ni => OH-Ni + OH-Ni  # Reaction 34
+  rate-constant: {A: 1.889e+25, b: -0.251, Ea: 215.769}
+- equation: CO2-Ni + H-Ni => COOH-Ni + Ni  # Reaction 35
+  rate-constant: {A: 1.287e+25, b: -0.46, Ea: 117.2}
+- equation: COOH-Ni + Ni => CO2-Ni + H-Ni  # Reaction 36
+  rate-constant: {A: 1.288e+20, b: 0.46, Ea: 33.8}
+- equation: COOH-Ni + Ni => OH-Ni + CO-Ni  # Reaction 37
+  rate-constant: {A: 6.032e+23, b: -0.216, Ea: 54.368}
+- equation: OH-Ni + CO-Ni => COOH-Ni + Ni  # Reaction 38
+  rate-constant: {A: 1.453e+21, b: 0.216, Ea: 97.632}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -50.000}}
+- equation: COOH-Ni + H-Ni => HCO-Ni + OH-Ni  # Reaction 39
+  rate-constant: {A: 4.22e+23, b: -1.145, Ea: 104.732}
+- equation: HCO-Ni + OH-Ni => COOH-Ni + H-Ni  # Reaction 40
+  rate-constant: {A: 3.246e+19, b: 0.245, Ea: 16.068}
+- equation: CO-Ni + CO-Ni => C-Ni + CO2-Ni  # Reaction 41
+  rate-constant: {A: 6.312e+13, b: 0.5, Ea: 241.679}
+  coverage-dependencies: {CO-Ni: {a: 0, m: 0, E: -100.000}}
+- equation: C-Ni + CO2-Ni => CO-Ni + CO-Ni  # Reaction 42
+  rate-constant: {A: 1.878e+21, b: -0.5, Ea: 239.321}
+  coverage-dependencies: {C-Ni: {a: 0, m: 0, E: -105.000}}

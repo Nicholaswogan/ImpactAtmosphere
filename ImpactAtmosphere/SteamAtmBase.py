@@ -14,10 +14,10 @@ class SteamAtmBase():
         if type(gas) == str:
             zahnle_path = os.path.dirname(os.path.realpath(__file__))+'/data/'
             ct.add_directory(zahnle_path)
-            if gas == "Methanation_Ni.yaml":
+            if "Methanation" in gas:
                 # we have a surface catalyst
                 self.surface_catalyst = True
-                self.surf_phase = ct.Interface('Methanation_Ni.yaml','Ni-surface')
+                self.surf_phase = ct.Interface(gas,'Ni-surface')
                 self.gas = self.surf_phase.adjacent["gas"]
             else:
                 self.gas = ct.Solution(gas)
