@@ -1,52 +1,26 @@
 import numpy as np
 import cantera as ct
-import os
 
+from .SteamAtmBase import SteamAtmBase
 from . import constants as const
 from .utils import sat_pressure_H2O, OLR
 
-class SteamAtm():
+class SteamAtm(SteamAtmBase):
 
-    def __init__(self,gas, T_prime = 2000, impactor_energy_frac = 0.5, \
+    def __init__(self, gas, T_prime = 2000, impactor_energy_frac = 0.5, \
         Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 17e5, 
         Ni_area = 1.0):
 
-        self.surface_catalyst = False
-        if type(gas) == str:
-            zahnle_path = os.path.dirname(os.path.realpath(__file__))+'/data/'
-            ct.add_directory(zahnle_path)
-            if gas == "Methanation_Ni.yaml":
-                # we have a surface catalyst
-                self.surface_catalyst = True
-                self.surf_phase = ct.Interface('Methanation_Ni.yaml','Ni-surface')
-                self.gas = self.surf_phase.adjacent["gas"]
-            else:
-                self.gas = ct.Solution(gas)
-        else:
-            self.gas = gas # cantera gas object
-        self.gas.basis = 'mass'
+        # Initialize base class
+        SteamAtmBase.__init__(self, gas, T_prime, impactor_energy_frac, 
+                             Fe_react_frac, impactor_Fe_frac, v_i, Ni_area)
 
-        self.ind_H2O = self.gas.species_names.index('H2O')
-
-        # Parameters
-        self.T_prime = T_prime # Initial atmosphere temperature (K)
-        self.impactor_energy_frac = impactor_energy_frac # fraction of kinetic energy used to heat the ocean and atmosphere
-        self.Fe_react_frac = Fe_react_frac # fraction of the iron that reacts with atmosphere.
-        self.impactor_Fe_frac = impactor_Fe_frac # Fe mass fraction of the impactor.
-        self.v_i = v_i # velocity of impactor (cm/s)
-        if self.surface_catalyst:
-            self.Ni_area = Ni_area # cm^2 Ni surface / cm^2 column of the atmosphere
-
-        # Settings
+        # Settings specific to SteamAtm
         self.rtol = 1e-10 # relative tolerance for CVODES integrator
         self.atol = 1e-20 # absolute tolerance for CVODES integrator
         self.dTemp = 3 # Temperature descritization (K)
         self.T_stop = 400
-        self.verbose = True
-        
-        # Constants
-        self.grav = 982 # gravity of Earth (cm/s2)
-        self.area = 5.1e18 # Area of Earth (cm2)
+        self.verbose = True 
 
     def impact(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid impact
@@ -75,8 +49,8 @@ class SteamAtm():
             of time.
         """
 
-        # P_init = [dynes], N_init = [mol/cm2]
-        N_init = self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
+        N_init, P_init, X = \
+            self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_init)
         sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
@@ -87,7 +61,7 @@ class SteamAtm():
         """
         
         # create solution object and append initial conditions
-        sol = ImpactSolution(self)
+        sol = SteamAtmSolution(self)
         tn = 0.0
         Tsurf_prev = self.T_prime
         Tsurf = self.T_prime
@@ -111,7 +85,7 @@ class SteamAtm():
                 # advance material surface for 10 seconds while keeping
                 # gas phase fixed. This makes the material properties
                 # realistic and consistent with the gas
-                self.surf_phase.advance_coverages(1.0e5,max_steps=1e7,rtol=self.rtol,atol=self.atol)
+                self.surf_phase.advance_coverages(1.0e10,max_steps=1e7,rtol=self.rtol,atol=self.atol)
                 # volume of a 1 cm2 column of the atmosphere. I multiply scale height
                 # by 1.0 cm2
                 Hscale_prev = const.N_avo*const.k_boltz*Tsurf_prev/(mubar_prev*self.grav)
@@ -267,180 +241,9 @@ class SteamAtm():
         dtime = -(1/dT_dt)*self.dTemp
         return dtime
 
-    ##########################################
-    ### Stuff that happens right at impact ###
-    ##########################################
+# helper class to save results
+class SteamAtmSolution():
 
-    def initial_conditions(self,N_H2O_ocean,N_CO2,N_N2,M_i, N_CO_init, N_H2_init, N_CH4_init):
-        """Determines the initial conditions for method `impact`.
-        """
-
-        # Determine how much steam is made
-        N_H2O_steam = self.steam_from_impact(N_H2O_ocean,N_CO2,N_N2,M_i)
-        # React the atmosphere with impactor Fe
-        N_H2,N_H2O,N_CO,N_CO2 = self.react_iron(N_H2O_steam,N_CO2,M_i)
-        # set as initial conditions
-        N_init = np.zeros(len(self.gas.species_names))
-        N_init[self.gas.species_names.index('H2')] = N_H2 + N_H2_init
-        N_init[self.gas.species_names.index('H2O')] = N_H2O
-        N_init[self.gas.species_names.index('CO')] = N_CO + N_CO_init
-        N_init[self.gas.species_names.index('CO2')] = N_CO2
-        N_init[self.gas.species_names.index('N2')] = N_N2
-        N_init[self.gas.species_names.index('CH4')] = N_CH4_init
-
-        mubar, Psurf, Ntot, Mtot, mix = self.prep_atmosphere(self.T_prime, N_init)
-        self.gas.TPX = self.T_prime,Psurf/10.0,mix
-        self.gas.equilibrate('TP')
-        N_init = self.gas.X*Ntot
-        return N_init
-
-    def steam_from_impact(self,N_H2O_ocean, N_CO2, N_N2, m_i):
-        """Calculates the amount of steam heated to self.T_prime by an impactor
-        of mass m_i (grams)
-
-        Parameters
-        ----------
-        N_H2O_ocean : float
-            Size of the ocean (mol/cm2)
-        N_CO2 : float
-            CO2 in the atmosphere (mol/cm2)
-        N_N2 : float
-            N2 in the atmosphere (mol/cm2)
-        m_i : float
-            Mass of the impactor (g)
-
-        Returns
-        -------
-        N_H2O_steam : float
-            moles/cm2 steam in the atmosphere.
-        """
-
-        T_0 = 300 # inital temperature
-        C_H2O = self.partial_cp_cgs('H2O',T_0)
-        C_w = C_H2O
-        C_CO2 = self.partial_cp_cgs('CO2',T_0)
-        C_N2 = self.partial_cp_cgs('N2',T_0)
-        C_CO = self.partial_cp_cgs('CO',T_0)
-        Q_w = 2.5e10 # latent heat of water vaporization ergs/g
-
-        # convert to grams from mol/cm2
-        M_H2O = N_H2O_ocean*self.gas.molecular_weights[self.gas.species_names.index('H2O')]*self.area
-        M_CO2 = N_CO2*self.gas.molecular_weights[self.gas.species_names.index('CO2')]*self.area
-        M_N2 = N_N2*self.gas.molecular_weights[self.gas.species_names.index('N2')]*self.area
-
-        # heat capacity of dry atmosphere (erg/K)
-        M_AC_A = M_CO2*C_CO2 + M_N2*C_N2
-
-        # energy of impactor (ergs)
-        E_i = 0.5*m_i*self.v_i**2
-
-        # assume that the heated atm/steam is heated to T_prime
-        M_steam = (E_i*self.impactor_energy_frac-M_AC_A*(self.T_prime-T_0))/(Q_w + (self.T_prime-T_0)*C_w)
-
-        if M_steam > M_H2O: # Can't be more steam than water
-            M_steam = M_H2O
-
-        # convert to moles/cm2 of steam
-        N_H2O_steam = M_steam/self.gas.molecular_weights[self.gas.species_names.index('H2O')]/self.area
-
-        return N_H2O_steam
-
-    def react_iron(self,N_H2O_steam,N_CO2,M_i):
-        """Reacts iron from an impactor with oxidized gases in an atmosphere.
-        Each mol of Fe sequesters one mol of O.
-
-        Parameters
-        ----------
-        N_H2O_steam : float
-            Steam in the atmosphere (mol/cm2)
-        N_CO2 : float
-            CO2 in the atmosphere (mol/cm2)
-        M_i : float
-            Mass of the impactor (g)
-
-        Returns
-        -------
-        N_H2 : float
-            H2 in the atmosphere (mol/cm2)
-        N_H2O : float
-            H2O in the atmosphere (mol/cm2)
-        N_CO : float
-            CO in the atmosphere (mol/cm2)
-        N_CO2 : float
-            CO2 in the atmosphere (mol/cm2)
-        """
-        Moles_Fe = self.Fe_react_frac*self.impactor_Fe_frac*M_i/56.
-        N_Fe = Moles_Fe/self.area
-        xxx = N_Fe/(N_H2O_steam +N_CO2) #moles Fe/moles O
-        if xxx<1:
-            N_H2 = xxx*N_H2O_steam
-            N_H2O = (1-xxx)*N_H2O_steam
-            N_CO = xxx*N_CO2
-            N_CO2 = (1-xxx)*N_CO2
-        else:
-            raise Exception('More Fe than O!')
-        return N_H2, N_H2O, N_CO, N_CO2
-
-    ###################################
-    ### Additional utility routines ###
-    ###################################
-
-    def partial_cp_cgs(self,spec,T):
-        '''Finds specific heat capacity of spec in
-        ergs/g/K (cgs units).
-        '''
-        self.gas.TP = T,1e5 # pressure doesn't matter
-        index = self.gas.species_names.index(spec)
-        cp = self.gas.partial_molar_cp[index]/self.gas.molecular_weights[index]*1e4
-        return cp
-
-    def make_equilibrium_solution(self, sol):
-        out = {'time' : sol['time']}
-        for key in self.gas.species_names:
-            out[key] = np.empty(len(sol['time']))
-
-        for i in range(len(sol['time'])):
-            T = sol['Tsurf'][i]
-            P = sol['Psurf'][i]/10.0 # Pa
-            X = np.empty(self.gas.n_total_species)
-            for j,key in enumerate(self.gas.species_names):
-                X[j] = sol[key][i]
-            self.gas.TPX = T,P,X
-            self.gas.equilibrate("TP")
-            
-            for j,key in enumerate(self.gas.species_names):
-                out[key][i] = self.gas.X[j]
-        return out
-
-    def init_for_integrate(self, sol):
-        Ninit_dict = {}
-        species = ['H2','CO','CO2','CH4','N2','NH3']
-        for spec in species:
-            Ninit_dict[spec] = sol[spec][-1]*sol['Ntot'][-1]
-        Ninit_dict['NH3'] = 0.0
-        return Ninit_dict
-        
-    def dry_end_atmos(self, sol_stm):
-        Ntot = sol_stm['Ntot'][-1]
-        Ntot_dry = Ntot - Ntot*sol_stm['H2O'][-1]
-
-        sol_dry = {}
-        sol_dry['Ntot'] = Ntot_dry
-
-        mubar_dry = 0.0
-        for i,sp in enumerate(self.gas.species_names):
-            if sp =='H2O':
-                sol_dry['H2O'] = 0.0
-            else:
-                sol_dry[sp] = sol_stm[sp][-1]*Ntot/Ntot_dry
-                mubar_dry += self.gas.molecular_weights[i]*sol_dry[sp]
-        Psurf_dry = Ntot_dry*mubar_dry*self.grav
-        sol_dry['Psurf'] = Psurf_dry
-        sol_dry['mubar'] = mubar_dry
-        
-        return sol_dry
-
-class ImpactSolution():
     def __init__(self, stm):
         self.stm = stm
         self.time = np.empty((0,),np.float64)
