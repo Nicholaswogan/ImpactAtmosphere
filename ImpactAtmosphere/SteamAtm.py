@@ -22,7 +22,7 @@ class SteamAtm(SteamAtmBase):
         self.T_stop = 400
         self.verbose = True 
 
-    def impact(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0):
+    def impact(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0, include_condensing_phase = True):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid impact
 
         Parameters
@@ -52,7 +52,8 @@ class SteamAtm(SteamAtmBase):
         N_init, P_init, X = \
             self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_init)
-        sol = self.cooling_steam_atmosphere_2(sol)
+        if include_condensing_phase:
+            sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
     def cooling_steam_atmosphere_1(self, N_init):
