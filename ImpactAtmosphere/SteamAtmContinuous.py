@@ -5,17 +5,24 @@ from cantera import CanteraError
 from .SteamAtmBase import SteamAtmBase
 from ._cvode import CVode
 from . import constants as const
-from .utils import sat_pressure_H2O, OLR
+from .utils import sat_pressure_H2O, OLR, oxygen_fugacity_QFM
 
 class SteamAtmContinuous(SteamAtmBase):
 
     def __init__(self, gas, T_prime = 2000, impactor_energy_frac = 0.5, \
         Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 17e5, 
-        Ni_area = 1.0):
+        Ni_area = 1.0, DQFM = None):
 
         # Initialize base class
         SteamAtmBase.__init__(self, gas, T_prime, impactor_energy_frac, 
                              Fe_react_frac, impactor_Fe_frac, v_i, Ni_area)
+
+        # Option to set O2 by a redox buffer (FMQ)
+        self.redox_buffer = False
+        if DQFM != None:
+            self.redox_buffer = True
+            self.DQFM = DQFM
+            self.ind_O2 = self.gas.species_names.index('O2')
 
         # Settings specific to SteamAtmContinuous
         self.rtol = 1.0e-4 # relative tolerance
@@ -23,6 +30,7 @@ class SteamAtmContinuous(SteamAtmBase):
         self.dTime = 10.0 # frequency in which solution is saved (years)
         self.max_integrator_errors = 10
         self.T_stop = 400.0
+        self.initial_integration = False
 
     def impact(self,N_H2O_ocean,N_CO2,N_N2,M_i,N_CO = 0.0, N_H2 = 0.0, N_CH4 = 0.0, include_condensing_phase = True):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid
@@ -52,6 +60,9 @@ class SteamAtmContinuous(SteamAtmBase):
             of time.
         """
 
+        if self.redox_buffer and include_condensing_phase:
+            raise Exception("Can not simulate the condensing phase assuming a redox buffer.")
+
         N_init, P_init, X = \
         self.initial_conditions(N_H2O_ocean,N_CO2,N_N2,M_i,N_CO, N_H2, N_CH4)
         sol = self.cooling_steam_atmosphere_1(N_H2O_ocean, N_init, P_init, X)
@@ -72,6 +83,12 @@ class SteamAtmContinuous(SteamAtmBase):
             y0 = np.concatenate(([self.T_prime], N_init, y0_surf))
         else:
             y0 = np.append(self.T_prime, N_init)
+
+        # integrate initial conditions at constant T for some time.
+        # This is needed for when there is a redox buffer, which
+        # is not accounted for during chem equil calculation.
+        if self.redox_buffer:
+            y0 = self.re_equilibrate_initial_conditions(y0)
         
         # initialize integrator
         args = (self,)
@@ -195,6 +212,42 @@ class SteamAtmContinuous(SteamAtmBase):
             raise Exception('Second impact integration failed.')
 
         return sol
+
+    def re_equilibrate_initial_conditions(self, y0):
+        """The purpose of this routine is to integrate the inital state for some time to
+        to make sure it is at equilibrium. This is only necessary for cases that use
+        a redox buffer (e.g. FMQ)
+        """
+        self.initial_integration = True
+        args = (self,)
+        t0 = 0.0
+        c = CVode(rhs_first, t0, y0, rtol=self.rtol, atol=self.atol, args=args, mxsteps=10000)
+        t = np.array(0.0)
+        y = np.empty(y0.shape[0])
+        tn = 1000.0*const.yr # 1000 years
+
+        tries = 0
+        while True:
+            t[...] = tn
+            ret = c.integrate(t, y)
+            if ret < 0:
+                # error was encountered.
+                # we re-initialize integrator and try again.
+                if tries > self.max_integrator_errors:
+                    # give up
+                    break
+                # clip y for good luck
+                y = np.clip(y, 1.0e-30, np.inf)
+                c.reinit(t, y) # re-initialize integrator
+                tries += 1
+            else:
+                break
+
+        if ret < 0:
+            raise Exception('re_equilibrate_initial_conditions failed: '+str(ret))
+        y = np.clip(y, 1.0e-30, np.inf)
+        self.initial_integration = False
+        return y
     
     def equilibrium_coverages(self, T, P, X):
         """Given gas-phase conditions, this routine computes
@@ -213,6 +266,15 @@ class SteamAtmContinuous(SteamAtmBase):
         self.gas.X = mix
         mubar = self.gas.mean_molecular_weight
         Psurf = Ntot*mubar*self.grav
+        if self.redox_buffer:
+            # Here, I ignore the fact that changing the
+            # O2 should effect the mean molecular weight. This is 
+            # OK because O2 should always be a very minor species
+            P_O2 = oxygen_fugacity_QFM(T, self.DQFM)*1.0e6 # dynes/cm2
+            mix_O2 = P_O2/Psurf
+            N[self.ind_O2] = mix_O2*Ntot
+            mix[self.ind_O2] = mix_O2
+
         return T, N, mubar, Psurf, Ntot, mix
 
     def prep_atm_first_catalyst(self, y):
@@ -297,7 +359,14 @@ def rhs_first(t, y, dy, self):
     # climate
     Fir = OLR(T)
     dT_dt = -self.grav/(const.cp_H2O*Psurf)*Fir
-    dy[0] = dT_dt
+    if self.initial_integration:
+        # we don't evolve temperature
+        dy[0] = 0.0
+    else:
+        dy[0] = dT_dt
+
+    if self.redox_buffer:
+        dy[self.ind_O2+1] = 0.0
     
     return 0
 
