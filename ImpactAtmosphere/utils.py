@@ -4,9 +4,11 @@ from . import constants as const
 def sat_pressure_H2O(T):
     return 1.0e6*np.exp(const.L_H2O*const.mu_H2O/const.R*(1/373.0 - 1/T)) # dynes/cm^2
 
-# OLR for a steam atmosphere
-def OLR(T):
-    return 1.6e5 + 500.0*np.maximum(T-1200.0,0.0) # ergs/cm2/s
+# net outgoing flux for a steam atmosphere at 4.0 billion years ago
+# on Earth. Computed with clima: 
+# https://github.com/Nicholaswogan/clima/tree/72bf1781d0cf400e2161c68302ed1b827ee72c89
+def net_outgoing_flux(T):
+    return 83e3 + 1000.0*np.maximum(T-1750.0,0.0) # ergs/cm2/s
 
 def oxygen_fugacity_QFM(T, DQFM):
     """From Zahnle et al. 2020"""

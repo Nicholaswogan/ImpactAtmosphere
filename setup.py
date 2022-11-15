@@ -9,7 +9,7 @@ setup(
     name="ImpactAtmosphere",
     packages=['ImpactAtmosphere'],
     python_requires='>=3.6',
-    version="4.3.0",
+    version="4.3.1",
     license="MIT",
     install_requires=['numpy','scipy'],
     author='Nicholas Wogan',

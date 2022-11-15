@@ -5,7 +5,7 @@ from cantera import CanteraError
 from .SteamAtmBase import SteamAtmBase
 from ._cvode import CVode
 from . import constants as const
-from .utils import sat_pressure_H2O, OLR, oxygen_fugacity_QFM
+from .utils import sat_pressure_H2O, net_outgoing_flux, oxygen_fugacity_QFM
 
 class SteamAtmContinuous(SteamAtmBase):
 
@@ -357,7 +357,7 @@ def rhs_first(t, y, dy, self):
     dy[1:self.ngas+1] = dy[1:self.ngas+1] + gas_rates[:]*Ha # moles/cm2/s
 
     # climate
-    Fir = OLR(T)
+    Fir = net_outgoing_flux(T)
     dT_dt = -self.grav/(const.cp_H2O*Psurf)*Fir
     if self.initial_integration:
         # we don't evolve temperature
@@ -431,7 +431,7 @@ def rhs_second(t, y, dy, self):
     dy[self.ind_H2O+1:self.ngas] = dy[self.ind_H2O+1:self.ngas] + dN_dt[self.ind_H2O+1:]
     
     # climate
-    Fir = OLR(T)
+    Fir = net_outgoing_flux(T)
     dT_dt = (-self.grav/(const.cp_H2O*Psurf))*Fir \
             *(1 + const.L_H2O**2*const.mu_H2O*P_H2O/(const.cp_H2O*Psurf*const.R*T**2))**-1
     dy[0] = dT_dt

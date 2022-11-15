@@ -3,7 +3,7 @@ import cantera as ct
 
 from .SteamAtmBase import SteamAtmBase
 from . import constants as const
-from .utils import sat_pressure_H2O, OLR
+from .utils import sat_pressure_H2O, net_outgoing_flux
 
 class SteamAtm(SteamAtmBase):
 
@@ -228,14 +228,14 @@ class SteamAtm(SteamAtmBase):
 
     def dtime_dTemp_first(self, T, N):  
         mubar, Psurf, Ntot, Mtot, mix = self.prep_atmosphere(T, N)
-        Fir = OLR(T)
+        Fir = net_outgoing_flux(T)
         dT_dt = -self.grav/(const.cp_H2O*Psurf)*Fir
         dtime = -(1/dT_dt)*self.dTemp
         return dtime
 
     def dtime_dTemp_second(self, T, N):  
         mubar, Psurf, Ntot, Mtot, mix = self.prep_atmosphere(T, N)
-        Fir = OLR(T)
+        Fir = net_outgoing_flux(T)
         P_H2O = sat_pressure_H2O(T)
         dT_dt = (-self.grav/(const.cp_H2O*Psurf))*Fir \
                 *(1 + const.L_H2O**2*const.mu_H2O*P_H2O/(const.cp_H2O*Psurf*const.R*T**2))**-1
