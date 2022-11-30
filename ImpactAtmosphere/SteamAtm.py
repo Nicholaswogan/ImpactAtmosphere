@@ -56,6 +56,15 @@ class SteamAtm(SteamAtmBase):
             sol = self.cooling_steam_atmosphere_2(sol)
         return sol.to_dict()
 
+    def impact_from_dict(self, init_cond, include_condensing_phase = True):
+        N_init = np.empty(len(self.gas.species_names))
+        for i,name in enumerate(self.gas.species_names):
+            N_init[i] = init_cond['Ntot']*init_cond[name]
+        sol = self.cooling_steam_atmosphere_1(N_init)
+        if include_condensing_phase:
+            sol = self.cooling_steam_atmosphere_2(sol)
+        return sol.to_dict()
+
     def cooling_steam_atmosphere_1(self, N_init):
         """Integrates atmosphere from a very hot state (2000 K) down to where 
         H2O begins to condense.

@@ -26,10 +26,12 @@ class SteamAtmBase():
         self.gas.basis = 'mass'
 
         self.ngas = self.gas.n_total_species
+        self.ngas_1 = 1
         if self.surface_catalyst:
             self.nsurf = self.surf_phase.n_total_species - self.ngas
         else:
             self.nsurf = 0
+            self.nsurf_1 = 1+self.ngas
 
         # index of H2O
         self.ind_H2O = self.gas.species_names.index('H2O')
