@@ -1,6 +1,7 @@
 import numpy as np
 import cantera as ct
 import os
+from scipy import integrate
 
 class SteamAtmBase():
     """Base class for the two approaches to solving the steam atmosphere
@@ -37,6 +38,7 @@ class SteamAtmBase():
         self.ind_H2O = self.gas.species_names.index('H2O')
 
         # Parameters
+        self.T_0 = 300 # Atmospheric temperature before impact (K)
         self.T_prime = T_prime # Initial atmosphere temperature (K)
         self.impactor_energy_frac = impactor_energy_frac # fraction of kinetic energy used to heat the ocean and atmosphere
         self.Fe_react_frac = Fe_react_frac # fraction of the iron that reacts with atmosphere.
@@ -84,7 +86,7 @@ class SteamAtmBase():
         N_init = self.gas.X*Ntot
         return N_init, P_init, self.gas.X
 
-    def steam_from_impact(self, N_H2O_ocean, N_CO2, N_N2, m_i):
+    def steam_from_impact(self, N_H2O_ocean, N_CO2, N_N2, M_i):
         """Calculates the amount of steam heated to self.T_prime by an impactor
         of mass m_i (grams)
 
@@ -96,7 +98,7 @@ class SteamAtmBase():
             CO2 in the atmosphere (mol/cm2)
         N_N2 : float
             N2 in the atmosphere (mol/cm2)
-        m_i : float
+        M_i : float
             Mass of the impactor (g)
 
         Returns
@@ -104,13 +106,7 @@ class SteamAtmBase():
         N_H2O_steam : float
             moles/cm2 steam in the atmosphere.
         """
-
-        T_0 = 300 # inital temperature
-        C_H2O = self.partial_cp_cgs('H2O',T_0)
-        C_w = C_H2O
-        C_CO2 = self.partial_cp_cgs('CO2',T_0)
-        C_N2 = self.partial_cp_cgs('N2',T_0)
-        C_CO = self.partial_cp_cgs('CO',T_0)
+        
         Q_w = 2.5e10 # latent heat of water vaporization ergs/g
 
         # convert to grams from mol/cm2
@@ -118,14 +114,16 @@ class SteamAtmBase():
         M_CO2 = N_CO2*self.gas.molecular_weights[self.gas.species_names.index('CO2')]*self.area
         M_N2 = N_N2*self.gas.molecular_weights[self.gas.species_names.index('N2')]*self.area
 
-        # heat capacity of dry atmosphere (erg/K)
-        M_AC_A = M_CO2*C_CO2 + M_N2*C_N2
+        # Compute the total integrated heat capacity (erg/g)
+        C_H2O = self.integrated_heat_capacity(self.T_0, self.T_prime, 'H2O')
+        C_CO2 = self.integrated_heat_capacity(self.T_0, self.T_prime, 'CO2')
+        C_N2 = self.integrated_heat_capacity(self.T_0, self.T_prime, 'N2')
 
         # energy of impactor (ergs)
-        E_i = 0.5*m_i*self.v_i**2
+        E_i = 0.5*M_i*self.v_i**2
 
         # assume that the heated atm/steam is heated to T_prime
-        M_steam = (E_i*self.impactor_energy_frac-M_AC_A*(self.T_prime-T_0))/(Q_w + (self.T_prime-T_0)*C_w)
+        M_steam = (E_i*self.impactor_energy_frac - M_CO2*C_CO2 - M_N2*C_N2)/(C_H2O + Q_w)
 
         if M_steam > M_H2O: # Can't be more steam than water
             M_steam = M_H2O
@@ -135,7 +133,7 @@ class SteamAtmBase():
 
         return N_H2O_steam
 
-    def react_iron(self,N_H2O_steam,N_CO2,M_i):
+    def react_iron(self, N_H2O_steam, N_CO2, M_i):
         """Reacts iron from an impactor with oxidized gases in an atmosphere.
         Each mol of Fe sequesters one mol of O.
 
@@ -174,6 +172,13 @@ class SteamAtmBase():
     ###################################
     ### Additional utility routines ###
     ###################################
+
+    def integrated_heat_capacity(self, T0, T1, species):
+        res, _ = integrate.quad(self.heat_capacity_integrand, T0, T1, args = (species))
+        return res
+
+    def heat_capacity_integrand(self, T, species):
+        return self.partial_cp_cgs(species,T) # erg/(g)
 
     def partial_cp_cgs(self,spec,T):
         '''Finds specific heat capacity of spec in

@@ -8,7 +8,7 @@ from .utils import sat_pressure_H2O, net_outgoing_flux
 class SteamAtm(SteamAtmBase):
 
     def __init__(self, gas, T_prime = 2000, impactor_energy_frac = 0.5, \
-        Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 17e5, 
+        Fe_react_frac = 1, impactor_Fe_frac = 0.33, v_i = 20.7e5, 
         Ni_area = 1.0):
 
         # Initialize base class

@@ -1,5 +1,7 @@
 from scipy import interpolate
+import numpy as np
 import os
+from . import constants as const
 
 data_dir = os.path.dirname(os.path.realpath(__file__))+'/data/'
 
@@ -117,43 +119,55 @@ def read_table_C1():
             
     return out, out1
 
-def make_interpolator(out1, v, theta, k):
-    Me = 5.972e24 # kg in Earth
-    tmp = out1[v][theta]
-    Mi = []
-    XX = []
-    for key in tmp:
-        Mi.append(key*Me*1.0e3) # grams
-        XX.append(tmp[key][k])
-    
-    f = interpolate.interp1d(Mi, XX, fill_value='extrapolate')
-    return f
+# nominal interpolators. We assume 45 degree impact angle, and v_esc = 2.0.
+# We linearly interpolate iron and energy results. We linearly interpolate
+# rock results, except mass is log10 space.
 
-def make_iron_interpolator(v, theta, col):
-    _, iron = read_table_C3()
-    Me = 5.972e24 # kg in Earth
-    tmp = iron[v][theta]
+def nominal_iron_interpolator():
+    v = 2 # 
+    theta = 45
+    col = 'X_Fe_atmos'
+
+    _, iron1 = read_table_C3()
+    tmp = iron1[v][theta]
     Mi = []
     XX = []
     for key in tmp:
-        Mi.append(key*Me*1.0e3) # grams
+        Mi.append(key*const.Me*1.0e3) # grams
         XX.append(tmp[key][col])
-    
-    f = interpolate.interp1d(Mi, XX, fill_value='extrapolate')
-    return f
 
-def make_rock_interpolator(v, theta, col):
-    _, rock = read_table_C2()
-    Me = 5.972e24 # kg in Earth
-    tmp = rock[v][theta]
+    iron = interpolate.interp1d(Mi, XX, fill_value='extrapolate')
+    return iron
+
+def nominal_rock_interpolator():
+    v = 2 # 
+    theta = 45
+
+    _, rock1 = read_table_C2()
+    tmp = rock1[v][theta]
     Mi = []
     XX = []
     for key in tmp:
-        Mi.append(key*Me*1.0e3) # grams
-        XX.append(tmp[key][col])
-    
-    f = interpolate.interp1d(Mi, XX, fill_value='extrapolate')
-    return f
+        Mi.append(key*const.Me*1.0e3) # grams
+        XX.append((tmp[key]['M_melt'] + tmp[key]['M_scf'] + tmp[key]['M_vapor'])*1e3)
 
+    rock = interpolate.interp1d(np.log10(Mi), np.log10(XX), fill_value='extrapolate')
+    return rock
+
+def nominal_energy_interpolator():
+    v = 2 # 
+    theta = 45
+    col = 'X_IE_atmos'
+
+    _, energy1 = read_table_C1()
+    tmp = energy1[v][theta]
+    Mi = []
+    XX = []
+    for key in tmp:
+        Mi.append(key*const.Me*1.0e3) # grams
+        XX.append(tmp[key][col])
+
+    rock = interpolate.interp1d(Mi, XX, fill_value='extrapolate')
+    return rock
 
 
