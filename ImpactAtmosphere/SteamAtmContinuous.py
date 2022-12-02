@@ -258,8 +258,7 @@ class SteamAtmContinuous(SteamAtmBase):
                 break
         
         if ret < 0:
-            # raise Exception('First impact integration failed.')
-            print('First impact integration failed.')
+            raise Exception('First impact integration failed.')
 
         return sol
 
@@ -386,7 +385,7 @@ class SteamAtmContinuous(SteamAtmBase):
         return T, N, mubar, Psurf, Ntot, mix
 
     def prep_atm_first_catalyst(self, y):
-        N_cat = y[self.ngas_1:self.nsurf_1]
+        N_cat = y[self.nsurf_1:self.nsurf_1+self.nsurf]
         X_cat = N_cat/np.sum(N_cat)
         return X_cat
 
