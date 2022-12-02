@@ -14,12 +14,11 @@ def net_outgoing_flux(T):
 
 def mass_to_diameter(mm): # in g
     m = mm/1e3 # to kg
-    rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
-    return 2*((3/(4*np.pi))*m/rho)**(1/3) # km
-
-def diameter_to_mass(D): #km
-    rho = 3.0e12 # kg/km3 (Morbidelli et al. 2012)
-    return rho*(4/3)*np.pi*(D/2)**3*1e3 # mass in g
+    M1 = m*0.333 # iron fraction
+    rho_1 = 7.87e12 # density of iron kg/km^3 
+    M2 = m*(1-0.333)
+    rho_2 = 3.27e12 # density of forensite kg/km^3
+    return 2*((3/4)*(M2/(rho_2*np.pi)) + (3/4)*(M1/(rho_1*np.pi)))**(1/3)
 
 @nb.njit
 def kc_terms(T, PP, mol_frac):

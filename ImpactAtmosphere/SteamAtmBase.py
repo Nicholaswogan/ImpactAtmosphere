@@ -32,7 +32,7 @@ class SteamAtmBase():
             self.nsurf = self.surf_phase.n_total_species - self.ngas
         else:
             self.nsurf = 0
-            self.nsurf_1 = 1+self.ngas
+        self.nsurf_1 = 1+self.ngas
 
         # index of H2O
         self.ind_H2O = self.gas.species_names.index('H2O')
