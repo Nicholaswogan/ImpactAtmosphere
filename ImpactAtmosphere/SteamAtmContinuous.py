@@ -29,7 +29,7 @@ class SteamAtmContinuous(SteamAtmBase):
         self.T_stop = 400.0 # temperature to stop the integration
         self.initial_integration = False
 
-    def impact(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO=0.0, N_H2=0.0, N_CH4=0.0, include_condensing_phase=True):
+    def impact(self, N_H2O_ocean, N_CO2, N_N2, M_i, N_CO=0.0, N_H2=0.0, N_CH4=0.0, include_condensing_phase=False):
         """Simulates chemistry of a cooling steamy atmosphere after large asteroid
         impact. The simulation stops when the steam begins to condense.
 
